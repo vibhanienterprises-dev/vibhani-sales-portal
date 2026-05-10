@@ -22,6 +22,9 @@ export function useAuth(): AuthState {
     setIsLoading(true);
 
     const baseUrl = import.meta.env.VITE_API_URL || "";
+    if (baseUrl && !baseUrl.startsWith("http")) {
+       console.warn("[Auth] VITE_API_URL does not start with http. This may cause issues.");
+    }
     fetch(`${baseUrl}/api/auth/user`, { credentials: "include" })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -48,6 +51,9 @@ export function useAuth(): AuthState {
   const login = useCallback(async (email: string, password: string) => {
     try {
       const baseUrl = import.meta.env.VITE_API_URL || "";
+    if (baseUrl && !baseUrl.startsWith("http")) {
+       console.warn("[Auth] VITE_API_URL does not start with http. This may cause issues.");
+    }
       const res = await fetch(`${baseUrl}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -67,6 +73,9 @@ export function useAuth(): AuthState {
 
   const logout = useCallback(async () => {
     const baseUrl = import.meta.env.VITE_API_URL || "";
+    if (baseUrl && !baseUrl.startsWith("http")) {
+       console.warn("[Auth] VITE_API_URL does not start with http. This may cause issues.");
+    }
     await fetch(`${baseUrl}/api/auth/logout`, { method: "POST", credentials: "include" });
     setUser(null);
   }, []);

@@ -4,11 +4,17 @@ import "./index.css";
 import { setBaseUrl } from "@workspace/api-client-react";
 
 const apiUrl = import.meta.env.VITE_API_URL;
-if (!apiUrl || !apiUrl.startsWith("http")) {
-  console.error("❌ [VITE_API_URL] is missing or invalid! API calls will likely fail. Current value:", apiUrl);
-  console.log("Please ensure VITE_API_URL is set in your Vercel Environment Variables (e.g., https://your-backend.onrender.com)");
+
+if (!apiUrl) {
+  throw new Error("❌ [FATAL] VITE_API_URL is undefined. Please set it in your environment variables.");
 }
-setBaseUrl(apiUrl || "");
+
+if (!apiUrl.startsWith("http")) {
+  throw new Error(`❌ [FATAL] VITE_API_URL must be an absolute URL starting with http/https. Current value: "${apiUrl}"`);
+}
+
+console.info(`✅ [API] Base URL set to: ${apiUrl}`);
+setBaseUrl(apiUrl);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

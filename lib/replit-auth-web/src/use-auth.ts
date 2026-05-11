@@ -12,6 +12,8 @@ interface AuthState {
   refetch: () => void;
 }
 
+const TOKEN_KEY = "vibhani_token";
+
 export function useAuth(): AuthState {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -25,7 +27,14 @@ export function useAuth(): AuthState {
     if (!baseUrl || !baseUrl.startsWith("http")) {
       throw new Error(`[Auth] VITE_API_URL is invalid: "${baseUrl}"`);
     }
-    fetch(`${baseUrl}/api/auth/user`, { credentials: "include" })
+
+    const token = localStorage.getItem(TOKEN_KEY);
+    const headers: HeadersInit = { "Content-Type": "application/json" };
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    fetch(`${baseUrl}/api/auth/user`, { headers })
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json() as Promise<{ user: AuthUser | null }>;
@@ -52,19 +61,23 @@ export function useAuth(): AuthState {
   const login = useCallback(async (email: string, password: string) => {
     try {
       const baseUrl = import.meta.env.VITE_API_URL;
-    if (!baseUrl || !baseUrl.startsWith("http")) {
-      throw new Error(`[Auth] VITE_API_URL is invalid: "${baseUrl}"`);
-    }
+      if (!baseUrl || !baseUrl.startsWith("http")) {
+        throw new Error(`[Auth] VITE_API_URL is invalid: "${baseUrl}"`);
+      }
       const res = await fetch(`${baseUrl}/api/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
       if (!res.ok) {
         return { ok: false, error: data.error ?? "Login failed" };
       }
+      
+      if (data.token) {
+        localStorage.setItem(TOKEN_KEY, data.token);
+      }
+      
       setTick((t) => t + 1);
       return { ok: true };
     } catch {
@@ -77,7 +90,15 @@ export function useAuth(): AuthState {
     if (!baseUrl || !baseUrl.startsWith("http")) {
       throw new Error(`[Auth] VITE_API_URL is invalid: "${baseUrl}"`);
     }
-    await fetch(`${baseUrl}/api/auth/logout`, { method: "POST", credentials: "include" });
+    
+    const token = localStorage.getItem(TOKEN_KEY);
+    const headers: HeadersInit = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    await fetch(`${baseUrl}/api/auth/logout`, { method: "POST", headers });
+    localStorage.removeItem(TOKEN_KEY);
     setUser(null);
   }, []);
 

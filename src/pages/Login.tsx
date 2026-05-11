@@ -65,7 +65,9 @@ export default function Login() {
     setError("");
     setLoading(true);
     const result = await login(email, password);
-    if (!result.ok) {
+    if (result.ok) {
+      console.log("✅ Login successful! Triggering auth refetch...");
+    } else {
       setError(result.error ?? "Login failed");
     }
     setLoading(false);

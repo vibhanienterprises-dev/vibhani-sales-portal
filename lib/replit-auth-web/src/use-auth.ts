@@ -32,6 +32,7 @@ export function useAuth(): AuthState {
       })
       .then((data) => {
         if (!cancelled) {
+          console.log("👤 Auth User Data:", data.user ? `Authenticated as ${data.user.email}` : "Not authenticated");
           setUser(data.user ?? null);
           setIsLoading(false);
         }

@@ -13,6 +13,7 @@ if (!apiUrl.startsWith("http")) {
   throw new Error(`❌ [FATAL] VITE_API_URL must be an absolute URL starting with http/https. Current value: "${apiUrl}"`);
 }
 
+// Ensuring API URL is absolute and correctly applied for cross-origin requests
 console.info(`✅ [API] Base URL set to: ${apiUrl}`);
 setBaseUrl(apiUrl);
 

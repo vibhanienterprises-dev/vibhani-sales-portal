@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useParams } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { customFetch } from "@workspace/api-client-react";
 import { type Quotation, fmtINR, computeTotals } from "@/lib/quotation-helpers";
 
 interface Settings {
@@ -47,21 +48,13 @@ export default function QuotationPrint() {
 
   const { data: quotation, isLoading: loadingQ } = useQuery<Quotation>({
     queryKey: ["quotation-print", id],
-    queryFn: async () => {
-      const res = await fetch(`/api/quotations/${id}`);
-      if (!res.ok) throw new Error("Not found");
-      return res.json();
-    },
+    queryFn: () => customFetch<Quotation>(`/api/quotations/${id}`),
     enabled: !!id,
   });
 
   const { data: settings, isLoading: loadingS } = useQuery<Settings>({
     queryKey: ["settings-print"],
-    queryFn: async () => {
-      const res = await fetch("/api/settings");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: () => customFetch<Settings>("/api/settings"),
   });
 
   const isLoading = loadingQ || loadingS;

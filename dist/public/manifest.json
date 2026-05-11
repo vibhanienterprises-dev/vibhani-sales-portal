@@ -1,0 +1,20 @@
+{
+  "name": "Vibhani CRM",
+  "short_name": "Vibhani",
+  "description": "The premium cockpit for Indian SME sales",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0f1e",
+  "theme_color": "#f59e0b",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "en-IN"
+}

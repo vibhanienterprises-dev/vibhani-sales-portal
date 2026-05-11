@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/layout/Sidebar";
-import { useGetTodaysTasks, useCompleteTask, useCreateTask, useListLeads } from "@workspace/api-client-react";
+import { customFetch } from "@workspace/api-client-react";
+import { useGetTodaysTasks, useCompleteTask, useCreateTask, useListLeads, customFetch } from "@workspace/api-client-react";
 import { getGetTodaysTasksQueryKey } from "@workspace/api-client-react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -50,11 +51,7 @@ export default function Tasks() {
   const { data: tasks, isLoading } = useGetTodaysTasks();
   const { data: upcomingTasks, isLoading: upcomingLoading } = useQuery<UpcomingTasks>({
     queryKey: ["/api/tasks/upcoming"],
-    queryFn: async () => {
-      const res = await fetch("/api/tasks/upcoming");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: () => customFetch<UpcomingTasks>("/api/tasks/upcoming"),
     refetchInterval: 60_000,
   });
   const { data: leads } = useListLeads();

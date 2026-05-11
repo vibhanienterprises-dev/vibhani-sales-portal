@@ -17,6 +17,7 @@ import {
   useListTeamMembers,
   useAssignLead,
   useGetLeadActivity,
+  customFetch,
 } from "@workspace/api-client-react";
 import { getGetLeadQueryKey, getListContactsQueryKey, getListTasksQueryKey, getGetLeadActivityQueryKey } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
@@ -142,20 +143,12 @@ export default function LeadDetail() {
 
   const { data: leadQuotations = [], isLoading: isLoadingQuotations } = useQuery<Quotation[]>({
     queryKey: ["quotations", "lead", leadId],
-    queryFn: async () => {
-      const res = await fetch(`/api/quotations?leadId=${leadId}`);
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: () => customFetch<Quotation[]>(`/api/quotations?leadId=${leadId}`),
     enabled: !!leadId,
   });
 
   const sendQuotation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(`/api/quotations/${id}/send`, { method: "POST" });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    mutationFn: (id: number) => customFetch(`/api/quotations/${id}/send`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotations", "lead", leadId] });
       setPreviewQuotation(undefined);
@@ -164,10 +157,7 @@ export default function LeadDetail() {
   });
 
   const deleteQuotation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(`/api/quotations/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed");
-    },
+    mutationFn: (id: number) => customFetch(`/api/quotations/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotations", "lead", leadId] });
       toast({ title: "Quotation deleted" });
@@ -183,12 +173,10 @@ export default function LeadDetail() {
     if (!noteText.trim()) return;
     setSavingNote(true);
     try {
-      const res = await fetch(`/api/leads/${leadId}/notes`, {
+      await customFetch(`/api/leads/${leadId}/notes`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ text: noteText.trim() }),
       });
-      if (!res.ok) throw new Error("Failed to save note");
       setNoteText("");
       queryClient.invalidateQueries({ queryKey: getGetLeadActivityQueryKey(leadId) });
       toast({ title: "Note added to timeline" });

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { useListLeads, useCreateLead, useListTeamMembers } from "@workspace/api-client-react";
+import { useListLeads, useCreateLead, useListTeamMembers, customFetch } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -178,13 +178,10 @@ export default function LeadsList() {
   const bulkAction = async (payload: object) => {
     setIsBulkLoading(true);
     try {
-      const res = await fetch("/api/leads/bulk-action", {
+      const data = await customFetch<any>("/api/leads/bulk-action", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: Array.from(selectedIds), ...payload }),
       });
-      if (!res.ok) throw new Error("Bulk action failed");
-      const data = await res.json();
       queryClient.invalidateQueries({ queryKey: ["/api/leads"] });
       clearSelection();
       return data;
@@ -228,7 +225,7 @@ export default function LeadsList() {
             <p className="text-muted-foreground mt-1 text-sm">Manage your sales pipeline and active inquiries.</p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => window.open("/api/leads/export", "_blank")}
+            <Button variant="outline" size="sm" onClick={() => window.open(`${import.meta.env.VITE_API_URL}/api/leads/export`, "_blank")}
               className="border-white/20 text-gray-300 hover:text-white hover:bg-white/10">
               <Download className="w-4 h-4 mr-2" /> Export CSV
             </Button>

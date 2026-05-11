@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   useGetDashboardSummary, 
   useGetRecentActivity, 
-  useGetPipelineValue 
+  useGetPipelineValue,
+  customFetch 
 } from "@workspace/api-client-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell, AreaChart, Area, Legend } from "recharts";
@@ -17,7 +18,7 @@ const PIE_COLORS = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--cha
 const fmt = (v: number) =>
   v >= 10_00_000 ? `₹${(v / 10_00_000).toFixed(1)}Cr`
   : v >= 1_00_000 ? `₹${(v / 1_00_000).toFixed(1)}L`
-  : v >= 1_000   ? `₹${(v / 1_000).toFixed(0)}k`
+  : v >= 1_000   ? `₹${(v / 1_00_000).toFixed(0)}k`
   : `₹${v}`;
 
 type ForecastData = {
@@ -34,7 +35,7 @@ export default function Dashboard() {
   const { data: pipeline, isLoading: isLoadingPipeline } = useGetPipelineValue();
   const { data: forecast, isLoading: isLoadingForecast } = useQuery<ForecastData>({
     queryKey: ["/api/dashboard/forecast"],
-    queryFn: () => fetch("/api/dashboard/forecast").then(r => r.json()),
+    queryFn: () => customFetch<ForecastData>("/api/dashboard/forecast"),
   });
 
   const formattedRevenueData = summary?.revenueByMonth?.map(item => ({

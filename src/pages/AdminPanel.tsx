@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@workspace/replit-auth-web";
+import { customFetch } from "@workspace/api-client-react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -149,13 +150,10 @@ function ResetPasswordDialog({
     if (password.length < 8) { setError("Password must be at least 8 characters"); return; }
     setLoading(true);
     try {
-      const res = await fetch(`/api/admin/users/${user!.id}/reset-password`, {
+      await customFetch(`/api/admin/users/${user!.id}/reset-password`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ newPassword: password }),
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Failed to reset password"); return; }
       toast({ title: `Password reset for ${getDisplayName(user!)}` });
       reset();
       onClose();
@@ -246,13 +244,10 @@ function CreateUserDialog({
     if (password.length < 8) { setError("Password must be at least 8 characters"); return; }
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/users", {
+      await customFetch("/api/admin/users", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password, firstName, lastName, role }),
       });
-      const data = await res.json();
-      if (!res.ok) { setError(data.error ?? "Failed to create user"); return; }
       toast({ title: `User ${email} created successfully` });
       reset();
       onOpenChange(false);
@@ -351,42 +346,26 @@ export default function AdminPanel() {
 
   const { data: users = [], isLoading: usersLoading } = useQuery<TeamUser[]>({
     queryKey: ["/api/admin/users"],
-    queryFn: async () => {
-      const res = await fetch("/api/admin/users");
-      if (!res.ok) throw new Error("Failed to fetch team members");
-      return res.json();
-    },
+    queryFn: () => customFetch<TeamUser[]>("/api/admin/users"),
   });
 
   const { data: auditLogs = [], isLoading: auditLoading } = useQuery<AuditLog[]>({
     queryKey: ["/api/admin/audit-logs", auditLimit],
-    queryFn: async () => {
-      const res = await fetch(`/api/admin/audit-logs?limit=${auditLimit}`);
-      if (!res.ok) throw new Error("Failed to fetch audit logs");
-      return res.json();
-    },
+    queryFn: () => customFetch<AuditLog[]>(`/api/admin/audit-logs?limit=${auditLimit}`),
     refetchInterval: 30_000,
   });
 
   const { data: stats } = useQuery<TeamStats>({
     queryKey: ["/api/admin/team-stats"],
-    queryFn: async () => {
-      const res = await fetch("/api/admin/team-stats");
-      if (!res.ok) throw new Error("Failed to fetch team stats");
-      return res.json();
-    },
+    queryFn: () => customFetch<TeamStats>("/api/admin/team-stats"),
   });
 
   const roleMutation = useMutation({
-    mutationFn: async ({ userId, role }: { userId: string; role: "admin" | "sales_rep" }) => {
-      const res = await fetch(`/api/admin/users/${userId}/role`, {
+    mutationFn: ({ userId, role }: { userId: string; role: "admin" | "sales_rep" }) =>
+      customFetch(`/api/admin/users/${userId}/role`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role }),
-      });
-      if (!res.ok) throw new Error("Failed to update role");
-      return res.json();
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/team-stats"] });
@@ -398,15 +377,11 @@ export default function AdminPanel() {
   });
 
   const activeMutation = useMutation({
-    mutationFn: async ({ userId, isActive }: { userId: string; isActive: boolean }) => {
-      const res = await fetch(`/api/admin/users/${userId}/active`, {
+    mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
+      customFetch(`/api/admin/users/${userId}/active`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ isActive }),
-      });
-      if (!res.ok) throw new Error("Failed to update status");
-      return res.json();
-    },
+      }),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/team-stats"] });

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
-import { useGetSettings, useUpdateSettings } from "@workspace/api-client-react";
+import { useGetSettings, useUpdateSettings, customFetch } from "@workspace/api-client-react";
 import { getGetSettingsQueryKey } from "@workspace/api-client-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -123,9 +123,7 @@ export default function Settings() {
     setCheckingStale(true);
     setStaleResult(null);
     try {
-      const res = await fetch("/api/stale-leads/check-now", { method: "POST" });
-      if (!res.ok) throw new Error("Failed");
-      const data = await res.json();
+      const data = await customFetch<{ checked: number; reminded: number; message: string }>("/api/stale-leads/check-now", { method: "POST" });
       setStaleResult(data);
       toast({ title: data.message });
     } catch {
@@ -138,8 +136,7 @@ export default function Settings() {
   const sendDigestNow = async () => {
     setSendingDigest(true);
     try {
-      const res = await fetch("/api/digest/send-now", { method: "POST" });
-      if (!res.ok) throw new Error("Failed");
+      await customFetch("/api/digest/send-now", { method: "POST" });
       toast({ title: "Test digest sent", description: "Check your email (or server logs if SMTP isn't configured yet)." });
     } catch {
       toast({ title: "Failed to send digest", variant: "destructive" });
@@ -160,21 +157,14 @@ export default function Settings() {
     }
     setChangingPassword(true);
     try {
-      const res = await fetch("/api/auth/change-password", {
+      await customFetch("/api/auth/change-password", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ currentPassword, newPassword }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        toast({ title: data.error ?? "Failed to change password", variant: "destructive" });
-      } else {
-        toast({ title: "Password changed successfully" });
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-      }
+      toast({ title: "Password changed successfully" });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
     } catch {
       toast({ title: "Network error — please try again", variant: "destructive" });
     } finally {

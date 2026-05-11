@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useAuth } from "@workspace/replit-auth-web";
+import { customFetch } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,9 +22,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const baseUrl = import.meta.env.VITE_API_URL || "";
-    fetch(`${baseUrl}/api/auth/setup-status`)
-      .then((r) => r.json())
+    customFetch<{ needsSetup: boolean }>("/api/auth/setup-status")
       .then((d) => setNeedsSetup(d.needsSetup))
       .catch(() => setNeedsSetup(false));
   }, []);
@@ -40,19 +40,11 @@ export default function Login() {
     }
     setLoading(true);
     try {
-      const baseUrl = import.meta.env.VITE_API_URL || "";
-      const res = await fetch(`${baseUrl}/api/auth/setup`, {
+      await customFetch("/api/auth/setup", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
         body: JSON.stringify({ email, password, firstName, lastName }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error ?? "Setup failed");
-      } else {
-        refetch();
-      }
+      refetch();
     } catch {
       setError("Network error — please try again");
     } finally {
@@ -60,13 +52,16 @@ export default function Login() {
     }
   };
 
+  const [, setLocation] = useLocation();
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     const result = await login(email, password);
     if (result.ok) {
-      console.log("✅ Login successful! Triggering auth refetch...");
+      console.log("✅ Login successful! Redirecting to dashboard...");
+      setLocation("/");
     } else {
       setError(result.error ?? "Login failed");
     }

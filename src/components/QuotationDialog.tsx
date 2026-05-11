@@ -14,6 +14,7 @@ import {
   type LineItem, type Quotation, type QuotationLead,
   GST_RATES, STATUS_COLORS, fmtINR, computeLineItem, computeTotals, emptyItem,
 } from "@/lib/quotation-helpers";
+import { customFetch } from "@workspace/api-client-react";
 
 // Re-export types so consumers can import from one place
 export type { LineItem, Quotation, QuotationLead };
@@ -132,9 +133,10 @@ export function QuotationFormDialog({
       };
       const url = existing ? `/api/quotations/${existing.id}` : "/api/quotations";
       const method = existing ? "PUT" : "POST";
-      const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      if (!res.ok) throw new Error("Failed to save");
-      return res.json();
+      return customFetch(url, {
+        method,
+        body: JSON.stringify(payload),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotations"] });

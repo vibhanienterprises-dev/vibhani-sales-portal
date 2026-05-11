@@ -78,6 +78,10 @@ export function useAuth(): AuthState {
         localStorage.setItem(TOKEN_KEY, data.token);
       }
       
+      if (data.user) {
+        setUser(data.user);
+      }
+      
       setTick((t) => t + 1);
       return { ok: true };
     } catch {

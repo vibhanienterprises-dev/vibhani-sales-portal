@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { useToast } from "@/hooks/use-toast";
-import { useGetSettings } from "@workspace/api-client-react";
+import { useGetSettings, customFetch } from "@workspace/api-client-react";
 import { FileText, Plus, Search, Trash2, Edit2, Send, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,21 +32,15 @@ export default function Quotations() {
 
   const { data: quotations = [], isLoading } = useQuery<Quotation[]>({
     queryKey: ["quotations", statusFilter],
-    queryFn: async () => {
+    queryFn: () => {
       const params = statusFilter !== "all" ? `?status=${statusFilter}` : "";
-      const res = await fetch(`/api/quotations${params}`);
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
+      return customFetch<Quotation[]>(`/api/quotations${params}`);
     },
   });
 
   const { data: leads = [] } = useQuery<QuotationLead[]>({
     queryKey: ["leads-for-quotation"],
-    queryFn: async () => {
-      const res = await fetch("/api/leads?limit=200");
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    queryFn: () => customFetch<QuotationLead[]>("/api/leads?limit=200"),
   });
 
   const filtered = quotations.filter((q) =>
@@ -57,10 +51,7 @@ export default function Quotations() {
   );
 
   const deleteQ = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(`/api/quotations/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed");
-    },
+    mutationFn: (id: number) => customFetch(`/api/quotations/${id}`, { method: "DELETE" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotations"] });
       toast({ title: "Quotation deleted" });
@@ -68,11 +59,7 @@ export default function Quotations() {
   });
 
   const sendQ = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await fetch(`/api/quotations/${id}/send`, { method: "POST" });
-      if (!res.ok) throw new Error("Failed");
-      return res.json();
-    },
+    mutationFn: (id: number) => customFetch(`/api/quotations/${id}/send`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotations"] });
       setPreviewQ(undefined);
@@ -81,14 +68,11 @@ export default function Quotations() {
   });
 
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: string }) => {
-      const res = await fetch(`/api/quotations/${id}`, {
+    mutationFn: ({ id, status }: { id: number; status: string }) =>
+      customFetch(`/api/quotations/${id}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
-      });
-      if (!res.ok) throw new Error("Failed");
-    },
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotations"] });
       toast({ title: "Status updated" });

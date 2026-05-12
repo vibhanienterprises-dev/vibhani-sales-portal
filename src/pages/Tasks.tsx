@@ -23,7 +23,8 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { CreateTaskBodyType } from "@workspace/api-client-react";
 import { Link } from "wouter";
-import { handleWhatsappClick, handleEmailClick } from "@/lib/communication";
+import { handleWhatsappClick } from "@/lib/communication";
+import { EmailComposer } from "@/components/communication/EmailComposer";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const taskSchema = z.object({
@@ -38,11 +39,20 @@ export default function Tasks() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<"pending" | "completed">("pending");
+  const [activeTab, setActiveTab] = useState<"pending" | "upcoming" | "completed">("pending");
 
-  const { data: pendingTasks, isLoading: pendingLoading } = useListTasks({ status: "pending" });
-  const { data: overdueTasks, isLoading: overdueLoading } = useListTasks({ status: "overdue" });
-  const { data: completedTasks, isLoading: completedLoading } = useListTasks({ status: "completed" });
+  const { data: pendingTasks, isLoading: pendingLoading } = useListTasks({ 
+    // @ts-ignore - view is a custom param handled by backend
+    view: "pending" 
+  });
+  const { data: upcomingTasks, isLoading: upcomingLoading } = useListTasks({ 
+    // @ts-ignore
+    view: "upcoming" 
+  });
+  const { data: completedTasks, isLoading: completedLoading } = useListTasks({ 
+    // @ts-ignore
+    view: "completed" 
+  });
   const { data: leads } = useListLeads();
   const completeTask = useCompleteTask();
   const createTask = useCreateTask();
@@ -56,6 +66,13 @@ export default function Tasks() {
       dueDate: new Date().toISOString().split('T')[0],
       leadId: 0,
     },
+  });
+
+  const [emailComposerData, setEmailComposerData] = useState<{ open: boolean; to: string; subject: string; body: string; leadId?: number }>({
+    open: false,
+    to: "",
+    subject: "",
+    body: "",
   });
 
   const onSubmit = (values: z.infer<typeof taskSchema>) => {
@@ -124,11 +141,11 @@ export default function Tasks() {
               <DropdownMenuLabel>Send Email</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {COMMUNICATION_TEMPLATES.map((tmpl) => (
-                <DropdownMenuItem key={tmpl.id} onClick={() => handleEmailClick(task.leadEmail, tmpl.emailSubject, tmpl.emailBody)}>
+                <DropdownMenuItem key={tmpl.id} onClick={() => setEmailComposerData({ open: true, to: task.leadEmail || "", subject: tmpl.emailSubject, body: tmpl.emailBody, leadId: task.leadId })}>
                   {tmpl.label}
                 </DropdownMenuItem>
               ))}
-              <DropdownMenuItem onClick={() => handleEmailClick(task.leadEmail, "", "")}>
+              <DropdownMenuItem onClick={() => setEmailComposerData({ open: true, to: task.leadEmail || "", subject: "", body: "", leadId: task.leadId })}>
                 Custom Email
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -168,7 +185,6 @@ export default function Tasks() {
     </div>
   );
 
-  const allPendingTasks = [...(overdueTasks || []), ...(pendingTasks || [])];
 
   return (
     <div className="flex h-screen bg-background">
@@ -253,16 +269,25 @@ export default function Tasks() {
               onClick={() => setActiveTab("pending")}
               className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition-colors ${activeTab === "pending" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             >
-              Pending Tasks
+              Pending
               <span className={`ml-2 px-1.5 py-0.5 rounded-full text-xs ${activeTab === "pending" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                {allPendingTasks.length}
+                {pendingTasks?.length || 0}
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveTab("upcoming")}
+              className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition-colors ${activeTab === "upcoming" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            >
+              Upcoming
+              <span className={`ml-2 px-1.5 py-0.5 rounded-full text-xs ${activeTab === "upcoming" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                {upcomingTasks?.length || 0}
               </span>
             </button>
             <button
               onClick={() => setActiveTab("completed")}
               className={`px-4 py-2 text-sm font-medium rounded-t-md border-b-2 transition-colors ${activeTab === "completed" ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             >
-              Completed History
+              Completed
               <span className={`ml-2 px-1.5 py-0.5 rounded-full text-xs ${activeTab === "completed" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
                 {completedTasks?.length || 0}
               </span>
@@ -272,9 +297,9 @@ export default function Tasks() {
 
         <div className="p-8 flex-1 overflow-y-auto">
           {activeTab === "pending" && (
-            (pendingLoading || overdueLoading) ? (
+            pendingLoading ? (
               <div className="space-y-4"><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></div>
-            ) : allPendingTasks.length === 0 ? (
+            ) : pendingTasks?.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-24 text-center">
                 <CheckSquare className="w-12 h-12 text-muted-foreground/40 mb-4" />
                 <p className="text-muted-foreground font-medium">All caught up! No pending tasks.</p>
@@ -283,7 +308,26 @@ export default function Tasks() {
               <Card>
                 <CardContent className="p-0">
                   <div className="divide-y divide-border">
-                    {allPendingTasks.map((task) => <TaskItem key={task.id} task={task} />)}
+                    {pendingTasks.map((task: any) => <TaskItem key={task.id} task={task} />)}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          )}
+
+          {activeTab === "upcoming" && (
+            upcomingLoading ? (
+              <div className="space-y-4"><Skeleton className="h-20 w-full" /><Skeleton className="h-20 w-full" /></div>
+            ) : upcomingTasks?.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-24 text-center">
+                <Calendar className="w-12 h-12 text-muted-foreground/40 mb-4" />
+                <p className="text-muted-foreground font-medium">No upcoming tasks scheduled.</p>
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <div className="divide-y divide-border">
+                    {upcomingTasks.map((task: any) => <TaskItem key={task.id} task={task} />)}
                   </div>
                 </CardContent>
               </Card>
@@ -310,6 +354,14 @@ export default function Tasks() {
           )}
         </div>
       </main>
+      <EmailComposer
+        open={emailComposerData.open}
+        onOpenChange={(open) => setEmailComposerData(prev => ({ ...prev, open }))}
+        leadId={emailComposerData.leadId}
+        defaultTo={emailComposerData.to}
+        defaultSubject={emailComposerData.subject}
+        defaultBody={emailComposerData.body}
+      />
     </div>
   );
 }

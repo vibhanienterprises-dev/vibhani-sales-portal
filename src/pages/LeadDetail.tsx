@@ -29,7 +29,8 @@ import { validateGstinFormat, LEAD_STAGES, LEAD_SOURCES, TASK_TYPES, INDIAN_STAT
 import { Building2, Mail, MessageCircle, Phone, Calendar, CheckSquare, Plus, User, Clock, ArrowRightLeft, FileText, CheckCircle2, UserCheck, Flame, StickyNote, RefreshCw, Filter, UserPlus, Send, Eye, Trash2, Edit2, ChevronDown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
-import { handleWhatsappClick, handleEmailClick } from "@/lib/communication";
+import { handleWhatsappClick } from "@/lib/communication";
+import { EmailComposer } from "@/components/communication/EmailComposer";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   QuotationFormDialog, QuotationPreviewDialog,
@@ -86,12 +87,6 @@ const whatsappSchema = z.object({
   customMessage: z.string().optional(),
 });
 
-const emailSchema = z.object({
-  to: z.string().email("Valid email required"),
-  subject: z.string().min(1, "Subject is required"),
-  templateId: z.coerce.number().optional(),
-  body: z.string().optional(),
-});
 
 export default function LeadDetail() {
   const { id } = useParams();
@@ -142,6 +137,12 @@ export default function LeadDetail() {
   const [quotationOpen, setQuotationOpen] = useState(false);
   const [editingQuotation, setEditingQuotation] = useState<Quotation | undefined>();
   const [previewQuotation, setPreviewQuotation] = useState<Quotation | undefined>();
+  const [emailComposerData, setEmailComposerData] = useState<{ open: boolean; to: string; subject: string; body: string }>({
+    open: false,
+    to: "",
+    subject: "",
+    body: "",
+  });
 
   const { data: leadQuotations = [], isLoading: isLoadingQuotations } = useQuery<Quotation[]>({
     queryKey: ["quotations", "lead", leadId],
@@ -169,7 +170,6 @@ export default function LeadDetail() {
   const contactForm = useForm<z.infer<typeof contactSchema>>({ resolver: zodResolver(contactSchema), defaultValues: { name: "", designation: "", email: "", phone: "", whatsapp: "", isPrimary: false } });
   const taskForm = useForm<z.infer<typeof taskSchema>>({ resolver: zodResolver(taskSchema), defaultValues: { title: "", description: "", type: "call", dueDate: new Date().toISOString().split('T')[0] } });
   const waForm = useForm<z.infer<typeof whatsappSchema>>({ resolver: zodResolver(whatsappSchema), defaultValues: { phone: "", templateId: 0, customMessage: "" } });
-  const emailForm = useForm<z.infer<typeof emailSchema>>({ resolver: zodResolver(emailSchema), defaultValues: { to: "", subject: "", templateId: 0, body: "" } });
 
   const saveNote = async () => {
     if (!noteText.trim()) return;
@@ -296,23 +296,6 @@ export default function LeadDetail() {
         setWaOpen(false);
         waForm.reset();
         toast({ title: "WhatsApp message sent" });
-      }
-    });
-  };
-
-  const onEmailSubmit = (values: z.infer<typeof emailSchema>) => {
-    const payload = {
-      leadId,
-      to: values.to,
-      subject: values.subject,
-      body: values.body || "",
-      ...(values.templateId ? { templateId: values.templateId } : {})
-    };
-    sendEmail.mutate({ data: payload }, {
-      onSuccess: () => {
-        setEmailOpen(false);
-        emailForm.reset();
-        toast({ title: "Email sent" });
       }
     });
   };
@@ -542,13 +525,13 @@ export default function LeadDetail() {
                 <DropdownMenuLabel>Send Email</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {COMMUNICATION_TEMPLATES.map((tmpl) => (
-                  <DropdownMenuItem key={tmpl.id} onClick={() => handleEmailClick(lead.email || "", tmpl.emailSubject, tmpl.emailBody)}>
+                  <DropdownMenuItem key={tmpl.id} onClick={() => setEmailComposerData({ open: true, to: lead.email || "", subject: tmpl.emailSubject, body: tmpl.emailBody })}>
                     {tmpl.label}
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => { emailForm.setValue("to", lead.email || ""); setEmailOpen(true); }}>
-                  Custom Email...
+                <DropdownMenuItem onClick={() => setEmailComposerData({ open: true, to: lead.email || "", subject: "", body: "" })}>
+                  Compose Custom...
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -578,47 +561,6 @@ export default function LeadDetail() {
                       <FormItem><FormLabel>Custom Message</FormLabel><FormControl><Textarea {...field} rows={4} /></FormControl></FormItem>
                     )} />
                     <Button type="submit" disabled={sendWhatsapp.isPending} className="w-full">Send Message</Button>
-                  </form>
-                </Form>
-              </DialogContent>
-            </Dialog>
-
-            <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
-              <DialogContent>
-                <DialogHeader><DialogTitle>Send Email</DialogTitle></DialogHeader>
-                <Form {...emailForm}>
-                  <form onSubmit={emailForm.handleSubmit(onEmailSubmit)} className="space-y-4">
-                    <FormField control={emailForm.control} name="to" render={({ field }) => (
-                      <FormItem><FormLabel>To *</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
-                    )} />
-                    <FormField control={emailForm.control} name="templateId" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Template</FormLabel>
-                        <Select onValueChange={(v) => {
-                          field.onChange(v ? parseInt(v) : 0);
-                          if (v && v !== "0") {
-                            const tmpl = emailTemplates?.find((t: any) => t.id.toString() === v);
-                            if (tmpl) {
-                              emailForm.setValue("subject", tmpl.subject);
-                              emailForm.setValue("body", tmpl.body);
-                            }
-                          }
-                        }}>
-                          <FormControl><SelectTrigger><SelectValue placeholder="Select template" /></SelectTrigger></FormControl>
-                          <SelectContent>
-                            <SelectItem value="0">No template</SelectItem>
-                            {emailTemplates?.map((t: any) => <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </FormItem>
-                    )} />
-                    <FormField control={emailForm.control} name="subject" render={({ field }) => (
-                      <FormItem><FormLabel>Subject *</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>
-                    )} />
-                    <FormField control={emailForm.control} name="body" render={({ field }) => (
-                      <FormItem><FormLabel>Body</FormLabel><FormControl><Textarea {...field} rows={6} /></FormControl></FormItem>
-                    )} />
-                    <Button type="submit" disabled={sendEmail.isPending} className="w-full">Send Email</Button>
                   </form>
                 </Form>
               </DialogContent>
@@ -729,7 +671,7 @@ export default function LeadDetail() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               {COMMUNICATION_TEMPLATES.map((tmpl) => (
-                                <DropdownMenuItem key={tmpl.id} onClick={() => handleEmailClick(contact.email || "", tmpl.emailSubject, tmpl.emailBody)}>
+                                <DropdownMenuItem key={tmpl.id} onClick={() => setEmailComposerData({ open: true, to: contact.email || "", subject: tmpl.emailSubject, body: tmpl.emailBody })}>
                                   {tmpl.label}
                                 </DropdownMenuItem>
                               ))}
@@ -1217,7 +1159,15 @@ export default function LeadDetail() {
           </DialogContent>
         </Dialog>
 
-      </main>
+      <Toaster />
+      <EmailComposer
+        open={emailComposerData.open}
+        onOpenChange={(open) => setEmailComposerData(prev => ({ ...prev, open }))}
+        leadId={leadId}
+        defaultTo={emailComposerData.to}
+        defaultSubject={emailComposerData.subject}
+        defaultBody={emailComposerData.body}
+      />
     </div>
   );
 }

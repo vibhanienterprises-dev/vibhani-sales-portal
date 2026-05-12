@@ -66,7 +66,8 @@ export type TeamMemberRole =
 
 export const TeamMemberRole = {
   admin: "admin",
-  sales_rep: "sales_rep",
+  sales: "sales",
+  marketing: "marketing",
 } as const;
 
 export interface TeamMember {

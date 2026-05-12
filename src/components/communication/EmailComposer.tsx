@@ -112,17 +112,16 @@ export function EmailComposer({
         formData.append("attachments", file);
       });
 
-      const res = await fetch("/api/email/send", {
+      // customFetch handles base URL and auth headers automatically
+      await customFetch("/api/email/send", {
         method: "POST",
         body: formData,
-        // Don't set Content-Type header, browser will set it with boundary
       });
-
-      if (!res.ok) throw new Error("Failed to send email");
 
       toast({ title: "Email sent successfully" });
       onOpenChange(false);
     } catch (error) {
+      console.error("Email send error:", error);
       toast({ 
         title: "Error", 
         description: "Could not send email. Please check SMTP settings.",
@@ -177,8 +176,8 @@ export function EmailComposer({
                         <SelectTrigger><SelectValue placeholder="Select a template" /></SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {templates?.map((t: any) => (
-                          <SelectItem key={t.id} value={t.id.toString()}>{t.name}</SelectItem>
+                        {Array.isArray(templates) && templates.map((t: any) => (
+                          <SelectItem key={t.id} value={t.id?.toString() || ""}>{t.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>

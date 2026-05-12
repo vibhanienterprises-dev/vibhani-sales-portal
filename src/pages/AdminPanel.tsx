@@ -94,7 +94,8 @@ interface TeamUser {
 interface TeamStats {
   totalUsers: number;
   admins: number;
-  salesReps: number;
+  sales: number;
+  marketing: number;
   activeUsers: number;
   perRep: {
     userId: string;
@@ -535,10 +536,10 @@ export default function AdminPanel() {
                             <div>
                               <p className="font-medium text-sm">{rep.name}</p>
                               <Badge
-                                variant={rep.role === "admin" ? "default" : "secondary"}
+                                variant={rep.role === "admin" ? "default" : rep.role === "marketing" ? "outline" : "secondary"}
                                 className="text-xs"
                               >
-                                {rep.role === "admin" ? "Admin" : "Sales Rep"}
+                                {rep.role === "admin" ? "Admin" : rep.role === "marketing" ? "Marketing" : "Sales"}
                               </Badge>
                             </div>
                           </div>

@@ -1023,7 +1023,6 @@ export default function LeadDetail() {
                       note_added:     { icon: <StickyNote className="w-3.5 h-3.5" />,     color: "text-amber-500",   bg: "bg-amber-500/10 border-amber-500/30",      label: "Note" },
                       check_in:       { icon: <UserCheck className="w-3.5 h-3.5" />,      color: "text-purple-500",  bg: "bg-purple-500/10 border-purple-500/30",    label: "Check-In" },
                     };
-                    };
 
                     function relativeTime(date: Date): string {
                       const diff = Date.now() - date.getTime();

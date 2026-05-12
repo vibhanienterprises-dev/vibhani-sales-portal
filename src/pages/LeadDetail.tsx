@@ -308,8 +308,8 @@ export default function LeadDetail() {
     });
   };
 
-  const handleAssign = (assignedTo: string) => {
-    const value = assignedTo === "__unassigned__" ? null : assignedTo;
+  const handleAssign = (assignedTo: string | number) => {
+    const value = assignedTo === "__unassigned__" ? null : String(assignedTo);
     assignLead.mutate({ id: leadId, data: { assignedTo: value } }, {
       onSuccess: (data) => {
         queryClient.setQueryData(getGetLeadQueryKey(leadId), data);

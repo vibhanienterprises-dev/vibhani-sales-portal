@@ -192,8 +192,8 @@ export default function LeadsList() {
     }
   };
 
-  const handleBulkAssign = async (assignedTo: string | null) => {
-    const data = await bulkAction({ action: "assign", assignedTo });
+  const handleBulkAssign = async (assignedTo: string | number | null) => {
+    const data = await bulkAction({ action: "assign", assignedTo: assignedTo ? String(assignedTo) : null });
     if (data) {
       const name = assignedTo ? (teamMembers?.find(m => m.id === assignedTo)?.name ?? "member") : "nobody";
       toast({ title: `${data.updated} leads assigned to ${name}` });

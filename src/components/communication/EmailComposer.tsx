@@ -43,17 +43,17 @@ export function EmailComposer({
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: templates } = useQuery({
+  const { data: templates, isLoading: isLoadingTemplates } = useQuery({
     queryKey: ["email-templates"],
     queryFn: () => customFetch<any[]>("/api/email/templates")
   });
 
-  const { data: authData } = useQuery({
+  const { data: authData, isLoading: isLoadingAuth } = useQuery({
     queryKey: ["auth-user"],
     queryFn: () => customFetch<{ user: any, isAuthenticated: boolean }>("/api/auth/user")
   });
 
-  const { data: settings } = useQuery({
+  const { data: settings, isLoading: isLoadingSettings } = useQuery({
     queryKey: ["settings"],
     queryFn: () => customFetch<any>("/api/settings")
   });
@@ -61,20 +61,21 @@ export function EmailComposer({
   const form = useForm<z.infer<typeof emailSchema>>({
     resolver: zodResolver(emailSchema),
     defaultValues: {
-      to: defaultTo,
-      subject: defaultSubject,
-      body: defaultBody,
+      to: defaultTo || "",
+      subject: defaultSubject || "",
+      body: defaultBody || "",
       templateId: "",
     },
   });
 
+  // Sync form with props when they change or modal opens
   useEffect(() => {
     if (open) {
       setSelectedFiles([]);
       form.reset({
-        to: defaultTo,
-        subject: defaultSubject,
-        body: defaultBody,
+        to: defaultTo || "",
+        subject: defaultSubject || "",
+        body: defaultBody || "",
         templateId: "",
       });
     }
@@ -112,7 +113,6 @@ export function EmailComposer({
         formData.append("attachments", file);
       });
 
-      // customFetch handles base URL and auth headers automatically
       await customFetch("/api/email/send", {
         method: "POST",
         body: formData,
@@ -132,7 +132,9 @@ export function EmailComposer({
     }
   };
 
-  const fromEmail = (authData?.user?.role?.toUpperCase() === 'SALES' || authData?.user?.role === 'sales_rep')
+  const isLoading = isLoadingAuth || isLoadingSettings;
+
+  const fromEmail = (authData?.user?.role?.toUpperCase() === 'SALES' || authData?.user?.role === 'sales')
     ? settings?.smtpFromEmail || settings?.smtpUser || "sales@company.com" 
     : authData?.user?.email || "user@company.com";
 
@@ -146,110 +148,131 @@ export function EmailComposer({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="bg-muted/30 p-3 rounded-md mb-4 border border-border">
-          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Sending From</div>
-          <div className="text-sm font-medium text-foreground">{fromEmail}</div>
-        </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <div className="space-y-1.5">
+                <FormLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">From</FormLabel>
+                <Input value={fromEmail} readOnly className="bg-muted font-medium" />
+              </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="to"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>To</FormLabel>
+                      <FormControl><Input {...field} placeholder="recipient@example.com" /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="templateId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Template (Optional)</FormLabel>
+                      <Select onValueChange={(v) => { field.onChange(v); handleTemplateChange(v); }}>
+                        <FormControl>
+                          <SelectTrigger><SelectValue placeholder="Select a template" /></SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {Array.isArray(templates) && templates.map((t: any) => (
+                            <SelectItem key={t.id} value={t.id?.toString() || ""}>{t.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <FormField
                 control={form.control}
-                name="to"
+                name="subject"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>To</FormLabel>
-                    <FormControl><Input {...field} placeholder="recipient@example.com" /></FormControl>
+                    <FormLabel>Subject</FormLabel>
+                    <FormControl><Input {...field} placeholder="Email subject" /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
               <FormField
                 control={form.control}
-                name="templateId"
+                name="body"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Template (Optional)</FormLabel>
-                    <Select onValueChange={(v) => { field.onChange(v); handleTemplateChange(v); }}>
-                      <FormControl>
-                        <SelectTrigger><SelectValue placeholder="Select a template" /></SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {Array.isArray(templates) && templates.map((t: any) => (
-                          <SelectItem key={t.id} value={t.id?.toString() || ""}>{t.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormLabel>Message</FormLabel>
+                    <FormControl>
+                      <Textarea {...field} className="min-h-[180px]" placeholder="Type your message here..." />
+                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
 
-            <FormField
-              control={form.control}
-              name="subject"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Subject</FormLabel>
-                  <FormControl><Input {...field} placeholder="Email subject" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="body"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Message</FormLabel>
-                  <FormControl>
-                    <Textarea {...field} className="min-h-[150px]" placeholder="Type your message here..." />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <div className="space-y-2">
-              <FormLabel className="flex items-center gap-2 cursor-pointer text-primary hover:text-primary/80 transition-colors" onClick={() => fileInputRef.current?.click()}>
-                <Paperclip className="w-4 h-4" />
-                Attach Files
-              </FormLabel>
-              <input
-                type="file"
-                multiple
-                className="hidden"
-                ref={fileInputRef}
-                onChange={handleFileChange}
-              />
-              
-              {selectedFiles.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {selectedFiles.map((file, index) => (
-                    <div key={index} className="flex items-center gap-2 bg-muted px-2 py-1 rounded-md text-xs border border-border group">
-                      <span className="truncate max-w-[150px]">{file.name}</span>
-                      <button type="button" onClick={() => removeFile(index)} className="text-muted-foreground hover:text-destructive transition-colors">
-                        <X className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
+              <div className="space-y-2 border-t pt-4">
+                <div className="flex items-center justify-between">
+                  <FormLabel className="text-sm font-medium">Attachments</FormLabel>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    className="h-8 gap-2"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Paperclip className="w-4 h-4" />
+                    Attach Files
+                  </Button>
                 </div>
-              )}
-            </div>
+                
+                <input
+                  type="file"
+                  multiple
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                />
+                
+                {selectedFiles.length > 0 ? (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {selectedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center gap-2 bg-muted px-2 py-1 rounded-md text-xs border border-border group">
+                        <span className="truncate max-w-[150px] font-medium">{file.name}</span>
+                        <span className="text-[10px] text-muted-foreground">({(file.size / 1024).toFixed(1)} KB)</span>
+                        <button type="button" onClick={() => removeFile(index)} className="text-muted-foreground hover:text-destructive transition-colors ml-1">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-xs text-muted-foreground italic">No files attached</div>
+                )}
+              </div>
 
-            <DialogFooter className="pt-4 border-t">
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit" disabled={sending}>
-                {sending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
-                Send Email
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+              <DialogFooter className="pt-4 border-t">
+                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                <Button type="submit" disabled={sending} className="min-w-[120px]">
+                  {sending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Mail className="w-4 h-4 mr-2" />}
+                  Send Email
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        )}
       </DialogContent>
     </Dialog>
+  );
+}
   );
 }

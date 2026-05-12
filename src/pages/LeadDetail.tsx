@@ -130,7 +130,6 @@ export default function LeadDetail() {
   const [editingContact, setEditingContact] = useState<{ id: number; name: string; designation?: string; email?: string; phone?: string; whatsapp?: string } | null>(null);
   const [taskOpen, setTaskOpen] = useState(false);
   const [waOpen, setWaOpen] = useState(false);
-  const [emailOpen, setEmailOpen] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [activityFilter, setActivityFilter] = useState<string>("all");
@@ -1160,7 +1159,6 @@ export default function LeadDetail() {
         </Dialog>
 
       </main>
-      <Toaster />
       <EmailComposer
         open={emailComposerData.open}
         onOpenChange={(open) => setEmailComposerData(prev => ({ ...prev, open }))}

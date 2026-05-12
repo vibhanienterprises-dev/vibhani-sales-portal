@@ -130,6 +130,30 @@ export default function LeadDetail() {
   const [editingContact, setEditingContact] = useState<{ id: number; name: string; designation?: string; email?: string; phone?: string; whatsapp?: string } | null>(null);
   const [taskOpen, setTaskOpen] = useState(false);
   const [waOpen, setWaOpen] = useState(false);
+  const [checkInOpen, setCheckInOpen] = useState(false);
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+  const [sitePhoto, setSitePhoto] = useState<File | null>(null);
+  const [visitingCard, setVisitingCard] = useState<File | null>(null);
+
+  const onCheckInSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsCheckingIn(true);
+    try {
+      await customFetch(`/api/leads/${leadId}/check-in`, {
+        method: "POST",
+      });
+
+      queryClient.invalidateQueries({ queryKey: getGetLeadActivityQueryKey(leadId) });
+      setCheckInOpen(false);
+      setSitePhoto(null);
+      setVisitingCard(null);
+      toast({ title: "Check-In Successful", description: "Your visit has been recorded." });
+    } catch (error) {
+      toast({ title: "Check-In Failed", variant: "destructive" });
+    } finally {
+      setIsCheckingIn(false);
+    }
+  };
   const [noteText, setNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [activityFilter, setActivityFilter] = useState<string>("all");
@@ -493,6 +517,14 @@ export default function LeadDetail() {
               </SelectContent>
             </Select>
 
+            <Button 
+              variant="outline" 
+              className="border-purple-500 text-purple-500 hover:bg-purple-500 hover:text-white"
+              onClick={() => setCheckInOpen(true)}
+            >
+              <UserCheck className="w-4 h-4 mr-2" /> Check-In
+            </Button>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="border-green-500 text-green-500 hover:bg-green-500 hover:text-white">
@@ -570,6 +602,63 @@ export default function LeadDetail() {
                     <Button type="submit" disabled={sendWhatsapp.isPending} className="w-full">Send Message</Button>
                   </form>
                 </Form>
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={checkInOpen} onOpenChange={setCheckInOpen}>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Lead Check-In</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={onCheckInSubmit} className="space-y-6 pt-4">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Site Photo</label>
+                      <div className="flex items-center justify-center w-full">
+                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted border-muted-foreground/25">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            {sitePhoto ? (
+                              <p className="text-sm text-primary font-medium">{sitePhoto.name}</p>
+                            ) : (
+                              <>
+                                <Plus className="w-8 h-8 mb-2 text-muted-foreground" />
+                                <p className="text-xs text-muted-foreground">Click to upload Site Photo</p>
+                              </>
+                            )}
+                          </div>
+                          <input type="file" className="hidden" accept="image/*" onChange={(e) => setSitePhoto(e.target.files?.[0] || null)} />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium">Visiting Card Photo</label>
+                      <div className="flex items-center justify-center w-full">
+                        <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer bg-muted/50 hover:bg-muted border-muted-foreground/25">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            {visitingCard ? (
+                              <p className="text-sm text-primary font-medium">{visitingCard.name}</p>
+                            ) : (
+                              <>
+                                <Plus className="w-8 h-8 mb-2 text-muted-foreground" />
+                                <p className="text-xs text-muted-foreground">Click to upload Visiting Card</p>
+                              </>
+                            )}
+                          </div>
+                          <input type="file" className="hidden" accept="image/*" onChange={(e) => setVisitingCard(e.target.files?.[0] || null)} />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <Button type="button" variant="ghost" className="flex-1" onClick={() => setCheckInOpen(false)}>Cancel</Button>
+                    <Button type="submit" className="flex-1" disabled={isCheckingIn}>
+                      {isCheckingIn ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+                      Verify & Check-In
+                    </Button>
+                  </div>
+                </form>
               </DialogContent>
             </Dialog>
           </div>

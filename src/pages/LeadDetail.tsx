@@ -1159,6 +1159,7 @@ export default function LeadDetail() {
           </DialogContent>
         </Dialog>
 
+      </main>
       <Toaster />
       <EmailComposer
         open={emailComposerData.open}

@@ -134,7 +134,18 @@ export default function LeadDetail() {
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [sitePhoto, setSitePhoto] = useState<File | null>(null);
   const [visitingCard, setVisitingCard] = useState<File | null>(null);
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+  const openImage = (imageUrl: string) => {
+    const newTab = window.open();
+    if (!newTab) return;
+    newTab.document.write(`
+      <body style="margin: 0; display: flex; justify-content: center; align-items: center; background-color: #0e0e0e; height: 100vh;">
+        <img src="${imageUrl}" style="max-width: 100%; max-height: 100%; object-fit: contain;" />
+      </body>
+    `);
+    newTab.document.title = "Image Viewer";
+    newTab.document.close();
+  };
 
   const onCheckInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1103,7 +1114,7 @@ export default function LeadDetail() {
                                                       {data.photos && Object.entries(data.photos).map(([name, url]: [string, any]) => (
                                                         <div 
                                                           key={name} 
-                                                          onClick={() => setSelectedImage(url)} 
+                                                          onClick={() => openImage(url)} 
                                                           className="block group cursor-pointer"
                                                         >
                                                           <div className="relative overflow-hidden rounded-lg border bg-muted">
@@ -1315,28 +1326,6 @@ export default function LeadDetail() {
         defaultSubject={emailComposerData.subject}
         defaultBody={emailComposerData.body}
       />
-
-      {selectedImage && (
-        <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 animate-in fade-in duration-200"
-          onClick={() => setSelectedImage(null)}
-        >
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="absolute top-4 right-4 text-white hover:bg-white/10"
-            onClick={(e) => { e.stopPropagation(); setSelectedImage(null); }}
-          >
-            <X className="w-6 h-6" />
-          </Button>
-          <img 
-            src={selectedImage} 
-            alt="Check-in full size" 
-            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-200"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
     </div>
   );
 }

@@ -42,26 +42,17 @@ export function EmailComposer({
 
   const { data: templates } = useQuery({
     queryKey: ["email-templates"],
-    queryFn: async () => {
-      const res = await customFetch("/api/email/templates");
-      return res.json();
-    }
+    queryFn: () => customFetch<any[]>("/api/email/templates")
   });
 
   const { data: authData } = useQuery({
     queryKey: ["auth-user"],
-    queryFn: async () => {
-      const res = await customFetch("/api/auth/user");
-      return res.json();
-    }
+    queryFn: () => customFetch<{ user: any, isAuthenticated: boolean }>("/api/auth/user")
   });
 
   const { data: settings } = useQuery({
     queryKey: ["settings"],
-    queryFn: async () => {
-      const res = await customFetch("/api/settings");
-      return res.json();
-    }
+    queryFn: () => customFetch<any>("/api/settings")
   });
 
   const form = useForm<z.infer<typeof emailSchema>>({
@@ -120,8 +111,8 @@ export function EmailComposer({
     }
   };
 
-  const fromEmail = authData?.user?.role === 'sales_rep' 
-    ? settings?.smtpFromEmail || "sales@company.com" 
+  const fromEmail = (authData?.user?.role?.toUpperCase() === 'SALES' || authData?.user?.role === 'sales_rep')
+    ? settings?.smtpFromEmail || settings?.smtpUser || "sales@company.com" 
     : authData?.user?.email || "user@company.com";
 
   return (

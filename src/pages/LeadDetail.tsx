@@ -547,7 +547,15 @@ export default function LeadDetail() {
                     <FormField control={waForm.control} name="templateId" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Template (Optional)</FormLabel>
-                        <Select onValueChange={(v) => field.onChange(v ? parseInt(v) : 0)}>
+                        <Select onValueChange={(v) => {
+                          field.onChange(v ? parseInt(v) : 0);
+                          if (v && v !== "0") {
+                            const tmpl = waTemplates?.find((t: any) => t.id.toString() === v);
+                            if (tmpl) {
+                              waForm.setValue("customMessage", tmpl.body);
+                            }
+                          }
+                        }}>
                           <FormControl><SelectTrigger><SelectValue placeholder="Select template" /></SelectTrigger></FormControl>
                           <SelectContent>
                             <SelectItem value="0">No template (Custom message)</SelectItem>

@@ -11,7 +11,8 @@ import * as z from "zod";
 import { useQuery } from "@tanstack/react-query";
 import { customFetch } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2, Mail, Paperclip, X } from "lucide-react";
+import { useRef } from "react";
 
 const emailSchema = z.object({
   to: z.string().email("Invalid email address"),
@@ -39,6 +40,8 @@ export function EmailComposer({
 }: EmailComposerProps) {
   const { toast } = useToast();
   const [sending, setSending] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: templates } = useQuery({
     queryKey: ["email-templates"],
@@ -67,6 +70,7 @@ export function EmailComposer({
 
   useEffect(() => {
     if (open) {
+      setSelectedFiles([]);
       form.reset({
         to: defaultTo,
         subject: defaultSubject,
@@ -75,6 +79,16 @@ export function EmailComposer({
       });
     }
   }, [open, defaultTo, defaultSubject, defaultBody, form]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      setSelectedFiles(prev => [...prev, ...Array.from(e.target.files!)]);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleTemplateChange = (templateId: string) => {
     const template = templates?.find((t: any) => t.id.toString() === templateId);
@@ -87,13 +101,21 @@ export function EmailComposer({
   const onSubmit = async (values: z.infer<typeof emailSchema>) => {
     setSending(true);
     try {
-      const res = await customFetch("/api/email/send", {
+      const formData = new FormData();
+      formData.append("to", values.to);
+      formData.append("subject", values.subject);
+      formData.append("body", values.body);
+      if (values.templateId) formData.append("templateId", values.templateId);
+      if (leadId) formData.append("leadId", leadId.toString());
+      
+      selectedFiles.forEach(file => {
+        formData.append("attachments", file);
+      });
+
+      const res = await fetch("/api/email/send", {
         method: "POST",
-        body: JSON.stringify({
-          ...values,
-          leadId,
-          templateId: values.templateId ? parseInt(values.templateId) : undefined,
-        }),
+        body: formData,
+        // Don't set Content-Type header, browser will set it with boundary
       });
 
       if (!res.ok) throw new Error("Failed to send email");
@@ -185,12 +207,39 @@ export function EmailComposer({
                 <FormItem>
                   <FormLabel>Message</FormLabel>
                   <FormControl>
-                    <Textarea {...field} className="min-h-[200px]" placeholder="Type your message here..." />
+                    <Textarea {...field} className="min-h-[150px]" placeholder="Type your message here..." />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            <div className="space-y-2">
+              <FormLabel className="flex items-center gap-2 cursor-pointer text-primary hover:text-primary/80 transition-colors" onClick={() => fileInputRef.current?.click()}>
+                <Paperclip className="w-4 h-4" />
+                Attach Files
+              </FormLabel>
+              <input
+                type="file"
+                multiple
+                className="hidden"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+              />
+              
+              {selectedFiles.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {selectedFiles.map((file, index) => (
+                    <div key={index} className="flex items-center gap-2 bg-muted px-2 py-1 rounded-md text-xs border border-border group">
+                      <span className="truncate max-w-[150px]">{file.name}</span>
+                      <button type="button" onClick={() => removeFile(index)} className="text-muted-foreground hover:text-destructive transition-colors">
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <DialogFooter className="pt-4 border-t">
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>

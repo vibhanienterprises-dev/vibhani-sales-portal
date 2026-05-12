@@ -82,7 +82,7 @@ interface TeamUser {
   firstName: string | null;
   lastName: string | null;
   profileImageUrl: string | null;
-  role: "admin" | "sales_rep";
+  role: "admin" | "sales" | "marketing";
   isActive: boolean;
   createdAt: string;
   leadCount: number;
@@ -228,14 +228,14 @@ function CreateUserDialog({
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"admin" | "sales_rep">("sales_rep");
+  const [role, setRole] = useState<"admin" | "sales" | "marketing">("sales");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const reset = () => {
     setFirstName(""); setLastName(""); setEmail("");
-    setPassword(""); setRole("sales_rep"); setError("");
+    setPassword(""); setRole("sales"); setError("");
   };
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -307,12 +307,13 @@ function CreateUserDialog({
           </div>
           <div className="space-y-1.5">
             <Label>Role</Label>
-            <Select value={role} onValueChange={(v) => setRole(v as "admin" | "sales_rep")}>
+            <Select value={role} onValueChange={(v) => setRole(v as "admin" | "sales" | "marketing")}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="sales_rep">Sales Rep</SelectItem>
+                <SelectItem value="sales">Sales Rep</SelectItem>
+                <SelectItem value="marketing">Marketing</SelectItem>
                 <SelectItem value="admin">Admin</SelectItem>
               </SelectContent>
             </Select>
@@ -361,7 +362,7 @@ export default function AdminPanel() {
   });
 
   const roleMutation = useMutation({
-    mutationFn: ({ userId, role }: { userId: string; role: "admin" | "sales_rep" }) =>
+    mutationFn: ({ userId, role }: { userId: string; role: "admin" | "sales" | "marketing" }) =>
       customFetch(`/api/admin/users/${userId}/role`, {
         method: "PATCH",
         body: JSON.stringify({ role }),
@@ -637,7 +638,7 @@ export default function AdminPanel() {
                             <Select
                               value={user.role}
                               onValueChange={(val) =>
-                                roleMutation.mutate({ userId: user.id, role: val as "admin" | "sales_rep" })
+                                roleMutation.mutate({ userId: user.id, role: val as "admin" | "sales" | "marketing" })
                               }
                               disabled={isSelf || roleMutation.isPending}
                             >
@@ -650,9 +651,14 @@ export default function AdminPanel() {
                                     <ShieldCheck className="h-3 w-3" /> Admin
                                   </div>
                                 </SelectItem>
-                                <SelectItem value="sales_rep">
+                                <SelectItem value="sales">
                                   <div className="flex items-center gap-1">
-                                    <UserCheck className="h-3 w-3" /> Sales Rep
+                                    <UserCheck className="h-3 w-3" /> Sales
+                                  </div>
+                                </SelectItem>
+                                <SelectItem value="marketing">
+                                  <div className="flex items-center gap-1">
+                                    <Target className="h-3 w-3" /> Marketing
                                   </div>
                                 </SelectItem>
                               </SelectContent>

@@ -661,9 +661,11 @@ export default function LeadDetail() {
                         <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => openEditContact(contact)} title="Edit contact">
                           <Edit2 className="w-3.5 h-3.5" />
                         </Button>
-                        <Button variant="outline" size="icon" className="h-7 w-7 text-destructive hover:text-destructive border-destructive/30" onClick={() => onDeleteContact(contact.id)} title="Remove contact">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </Button>
+                        {isAdmin && (
+                          <Button variant="outline" size="icon" className="h-7 w-7 text-destructive hover:text-destructive border-destructive/30" onClick={() => onDeleteContact(contact.id)} title="Remove contact">
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                     <div className="space-y-1 text-sm">

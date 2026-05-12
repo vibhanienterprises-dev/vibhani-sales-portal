@@ -134,6 +134,7 @@ export default function LeadDetail() {
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [sitePhoto, setSitePhoto] = useState<File | null>(null);
   const [visitingCard, setVisitingCard] = useState<File | null>(null);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   const onCheckInSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1100,7 +1101,11 @@ export default function LeadDetail() {
                                                     <p className="text-sm text-foreground leading-snug">{data.message}</p>
                                                     <div className="flex gap-2 mt-2">
                                                       {data.photos && Object.entries(data.photos).map(([name, url]: [string, any]) => (
-                                                        <a key={name} href={url} target="_blank" rel="noreferrer" className="block group">
+                                                        <div 
+                                                          key={name} 
+                                                          onClick={() => setSelectedImage(url)} 
+                                                          className="block group cursor-pointer"
+                                                        >
                                                           <div className="relative overflow-hidden rounded-lg border bg-muted">
                                                             <img 
                                                               src={url} 
@@ -1112,7 +1117,7 @@ export default function LeadDetail() {
                                                             </div>
                                                           </div>
                                                           <span className="text-[10px] text-muted-foreground mt-1 block text-center capitalize">{name.replace("_", " ")}</span>
-                                                        </a>
+                                                        </div>
                                                       ))}
                                                     </div>
                                                   </>
@@ -1310,6 +1315,28 @@ export default function LeadDetail() {
         defaultSubject={emailComposerData.subject}
         defaultBody={emailComposerData.body}
       />
+
+      {selectedImage && (
+        <div 
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4 animate-in fade-in duration-200"
+          onClick={() => setSelectedImage(null)}
+        >
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="absolute top-4 right-4 text-white hover:bg-white/10"
+            onClick={(e) => { e.stopPropagation(); setSelectedImage(null); }}
+          >
+            <X className="w-6 h-6" />
+          </Button>
+          <img 
+            src={selectedImage} 
+            alt="Check-in full size" 
+            className="max-w-full max-h-full object-contain rounded-lg shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

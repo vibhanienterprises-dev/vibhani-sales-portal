@@ -139,8 +139,15 @@ export default function LeadDetail() {
     e.preventDefault();
     setIsCheckingIn(true);
     try {
+      const formData = new FormData();
+      if (sitePhoto) formData.append("site_photo", sitePhoto);
+      if (visitingCard) formData.append("visiting_card", visitingCard);
+
       await customFetch(`/api/leads/${leadId}/check-in`, {
         method: "POST",
+        body: formData,
+        // When sending FormData with fetch, we MUST NOT set the Content-Type header manually
+        // customFetch usually handles JSON, so I need to check if it supports FormData.
       });
 
       queryClient.invalidateQueries({ queryKey: getGetLeadActivityQueryKey(leadId) });
@@ -997,7 +1004,7 @@ export default function LeadDetail() {
                       messages: ["email_sent", "whatsapp_sent"],
                       tasks: ["task_created", "task_completed"],
                       contacts: ["contact_added"],
-                      notes: ["note_added"],
+                      notes: ["note_added", "check_in"],
                     };
                     const filtered = (activity ?? []).filter(item =>
                       activityFilter === "all" || (FILTER_TYPES[activityFilter] ?? []).includes(item.type)
@@ -1014,6 +1021,8 @@ export default function LeadDetail() {
                       task_completed: { icon: <CheckCircle2 className="w-3.5 h-3.5" />,   color: "text-emerald-400", bg: "bg-emerald-400/10 border-emerald-400/30",  label: "Task Done" },
                       contact_added:  { icon: <UserPlus className="w-3.5 h-3.5" />,       color: "text-pink-400",    bg: "bg-pink-400/10 border-pink-400/30",        label: "Contact" },
                       note_added:     { icon: <StickyNote className="w-3.5 h-3.5" />,     color: "text-amber-500",   bg: "bg-amber-500/10 border-amber-500/30",      label: "Note" },
+                      check_in:       { icon: <UserCheck className="w-3.5 h-3.5" />,      color: "text-purple-500",  bg: "bg-purple-500/10 border-purple-500/30",    label: "Check-In" },
+                    };
                     };
 
                     function relativeTime(date: Date): string {
@@ -1078,7 +1087,39 @@ export default function LeadDetail() {
                                         {cfg.icon}
                                       </div>
                                       <div className="flex-1 pt-0.5 min-w-0">
-                                        {isNote ? (
+                                        {item.type === "check_in" ? (
+                                          <div className="space-y-3">
+                                            {(() => {
+                                              try {
+                                                const data = JSON.parse(item.description);
+                                                return (
+                                                  <>
+                                                    <p className="text-sm text-foreground leading-snug">{data.message}</p>
+                                                    <div className="flex gap-2 mt-2">
+                                                      {data.photos && Object.entries(data.photos).map(([name, url]: [string, any]) => (
+                                                        <a key={name} href={url} target="_blank" rel="noreferrer" className="block group">
+                                                          <div className="relative overflow-hidden rounded-lg border bg-muted">
+                                                            <img 
+                                                              src={url} 
+                                                              alt={name} 
+                                                              className="h-20 w-32 object-cover transition-transform group-hover:scale-105" 
+                                                            />
+                                                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                              <Eye className="w-5 h-5 text-white" />
+                                                            </div>
+                                                          </div>
+                                                          <span className="text-[10px] text-muted-foreground mt-1 block text-center capitalize">{name.replace("_", " ")}</span>
+                                                        </a>
+                                                      ))}
+                                                    </div>
+                                                  </>
+                                                );
+                                              } catch (e) {
+                                                return <p className="text-sm text-foreground leading-snug">{item.description}</p>;
+                                              }
+                                            })()}
+                                          </div>
+                                        ) : isNote ? (
                                           <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-sm text-foreground leading-relaxed">
                                             {item.description}
                                           </div>

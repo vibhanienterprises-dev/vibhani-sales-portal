@@ -66,3 +66,27 @@ export function validateGstinFormat(gstin: string) {
   const regex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
   return regex.test(gstin);
 }
+
+export const COMMUNICATION_TEMPLATES = [
+  {
+    id: "marketing",
+    label: "Marketing",
+    whatsapp: "Hello! We have some exciting new offers at Vibhani Enterprises. Check them out here: [Link]",
+    emailSubject: "Exciting New Offers from Vibhani Enterprises",
+    emailBody: "Hello,\n\nWe are excited to share some new offers with you..."
+  },
+  {
+    id: "utility",
+    label: "Utility",
+    whatsapp: "Hello! Just following up regarding the documents we discussed. Please let us know if you need any help.",
+    emailSubject: "Following up on documents - Vibhani Enterprises",
+    emailBody: "Hello,\n\nI am writing to follow up on the documents we discussed..."
+  },
+  {
+    id: "service",
+    label: "Service",
+    whatsapp: "Hello! Your service request has been processed. We will get back to you shortly with more details.",
+    emailSubject: "Service Request Update - Vibhani Enterprises",
+    emailBody: "Hello,\n\nYour service request is being processed..."
+  }
+];

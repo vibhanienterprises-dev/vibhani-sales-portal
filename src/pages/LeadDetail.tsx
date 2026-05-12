@@ -25,10 +25,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { validateGstinFormat, LEAD_STAGES, LEAD_SOURCES, TASK_TYPES, INDIAN_STATES } from "@/lib/constants";
-import { Building2, Mail, MessageCircle, Phone, Calendar, CheckSquare, Plus, User, Clock, ArrowRightLeft, FileText, CheckCircle2, UserCheck, Flame, StickyNote, RefreshCw, Filter, UserPlus, Send, Eye, Trash2, Edit2 } from "lucide-react";
+import { validateGstinFormat, LEAD_STAGES, LEAD_SOURCES, TASK_TYPES, INDIAN_STATES, COMMUNICATION_TEMPLATES } from "@/lib/constants";
+import { Building2, Mail, MessageCircle, Phone, Calendar, CheckSquare, Plus, User, Clock, ArrowRightLeft, FileText, CheckCircle2, UserCheck, Flame, StickyNote, RefreshCw, Filter, UserPlus, Send, Eye, Trash2, Edit2, ChevronDown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
+import { handleWhatsappClick, handleEmailClick } from "@/lib/communication";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   QuotationFormDialog, QuotationPreviewDialog,
   type Quotation, type QuotationLead, STATUS_COLORS, fmtINR,
@@ -509,12 +511,50 @@ export default function LeadDetail() {
               </SelectContent>
             </Select>
 
-            <Dialog open={waOpen} onOpenChange={setWaOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="border-green-500 text-green-500 hover:bg-green-500 hover:text-white" onClick={() => waForm.setValue("phone", lead.phone || "")}>
-                  <MessageCircle className="w-4 h-4 mr-2" /> WhatsApp
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="border-green-500 text-green-500 hover:bg-green-500 hover:text-white">
+                  <MessageCircle className="w-4 h-4 mr-2" /> WhatsApp <ChevronDown className="w-3 h-3 ml-2" />
                 </Button>
-              </DialogTrigger>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuLabel>Send WhatsApp</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {COMMUNICATION_TEMPLATES.map((tmpl) => (
+                  <DropdownMenuItem key={tmpl.id} onClick={() => handleWhatsappClick(lead.phone || "", tmpl.whatsapp)}>
+                    {tmpl.label}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => { waForm.setValue("phone", lead.phone || ""); setWaOpen(true); }}>
+                  Custom Message...
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white">
+                  <Mail className="w-4 h-4 mr-2" /> Email <ChevronDown className="w-3 h-3 ml-2" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px]">
+                <DropdownMenuLabel>Send Email</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {COMMUNICATION_TEMPLATES.map((tmpl) => (
+                  <DropdownMenuItem key={tmpl.id} onClick={() => handleEmailClick(lead.email || "", tmpl.emailSubject, tmpl.emailBody)}>
+                    {tmpl.label}
+                  </DropdownMenuItem>
+                ))}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => { emailForm.setValue("to", lead.email || ""); setEmailOpen(true); }}>
+                  Custom Email...
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Keep hidden dialogs for custom messages if needed, but the main interaction is now one-click */}
+            <Dialog open={waOpen} onOpenChange={setWaOpen}>
               <DialogContent>
                 <DialogHeader><DialogTitle>Send WhatsApp Message</DialogTitle></DialogHeader>
                 <Form {...waForm}>
@@ -544,11 +584,6 @@ export default function LeadDetail() {
             </Dialog>
 
             <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white" onClick={() => emailForm.setValue("to", lead.email || "")}>
-                  <Mail className="w-4 h-4 mr-2" /> Email
-                </Button>
-              </DialogTrigger>
               <DialogContent>
                 <DialogHeader><DialogTitle>Send Email</DialogTitle></DialogHeader>
                 <Form {...emailForm}>
@@ -683,9 +718,44 @@ export default function LeadDetail() {
                       </div>
                     </div>
                     <div className="space-y-1 text-sm">
-                      {contact.email && <div className="flex items-center gap-2"><Mail className="w-3 h-3 text-muted-foreground" /> {contact.email}</div>}
-                      {contact.phone && <div className="flex items-center gap-2"><Phone className="w-3 h-3 text-muted-foreground" /> {contact.phone}</div>}
-                      {contact.whatsapp && <div className="flex items-center gap-2 text-green-500"><MessageCircle className="w-3 h-3" /> {contact.whatsapp}</div>}
+                      {contact.email && (
+                        <div className="flex items-center justify-between group/email">
+                          <div className="flex items-center gap-2"><Mail className="w-3 h-3 text-muted-foreground" /> {contact.email}</div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/email:opacity-100 transition-opacity">
+                                <Send className="w-3 h-3 text-blue-500" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {COMMUNICATION_TEMPLATES.map((tmpl) => (
+                                <DropdownMenuItem key={tmpl.id} onClick={() => handleEmailClick(contact.email || "", tmpl.emailSubject, tmpl.emailBody)}>
+                                  {tmpl.label}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
+                      {(contact.phone || contact.whatsapp) && (
+                        <div className="flex items-center justify-between group/wa">
+                          <div className="flex items-center gap-2 text-green-500"><MessageCircle className="w-3 h-3" /> {contact.whatsapp || contact.phone}</div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover/wa:opacity-100 transition-opacity">
+                                <Send className="w-3 h-3 text-green-500" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              {COMMUNICATION_TEMPLATES.map((tmpl) => (
+                                <DropdownMenuItem key={tmpl.id} onClick={() => handleWhatsappClick(contact.whatsapp || contact.phone || "", tmpl.whatsapp)}>
+                                  {tmpl.label}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

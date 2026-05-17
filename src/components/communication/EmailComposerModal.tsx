@@ -104,22 +104,32 @@ export function EmailComposerModal({
     setErrorMsg("");
 
     try {
-      // POST JSON to the CRM backend SMTP engine
-      const result = await customFetch<{ success: boolean; message?: string; error?: string }>(
-        "/api/email/send",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to:      values.to,
-            subject: values.subject,
-            body:    values.body,
-            leadId:  leadId ?? undefined,
-          }),
-        }
-      );
+      const apiUrl = import.meta.env.VITE_API_URL || "";
+      const token = typeof localStorage !== "undefined" ? localStorage.getItem("vibhani_token") : null;
 
-      if (!result?.success) {
+      // POST JSON to the CRM backend SMTP engine using standard fetch
+      const response = await fetch(`${apiUrl}/api/email/send`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          to:      values.to,
+          subject: values.subject,
+          body:    values.body,
+          leadId:  leadId ?? undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson?.error ?? errJson?.message ?? "Failed to send email");
+      }
+
+      const result = await response.json().catch(() => ({ success: true }));
+
+      if (result && result.success === false) {
         throw new Error(result?.error ?? result?.message ?? "Server returned failure");
       }
 

@@ -30,7 +30,7 @@ import { Building2, Mail, MessageCircle, Phone, Calendar, CheckSquare, Plus, Use
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import { handleWhatsappClick } from "@/lib/communication";
-import { EmailComposer } from "@/components/communication/EmailComposer";
+import { EmailComposerModal } from "@/components/communication/EmailComposerModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   QuotationFormDialog, QuotationPreviewDialog,
@@ -676,26 +676,13 @@ export default function LeadDetail() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white">
-                  <Mail className="w-4 h-4 mr-2" /> Email <ChevronDown className="w-3 h-3 ml-2" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-[200px]">
-                <DropdownMenuLabel>Send Email</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                {COMMUNICATION_TEMPLATES.map((tmpl) => (
-                  <DropdownMenuItem key={tmpl.id} onClick={() => setEmailComposerData({ open: true, to: lead.email || "", subject: tmpl.emailSubject, body: tmpl.emailBody })}>
-                    {tmpl.label}
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setEmailComposerData({ open: true, to: lead.email || "", subject: "", body: "" })}>
-                  Compose Custom...
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <Button 
+              variant="outline" 
+              className="border-blue-500 text-blue-500 hover:bg-blue-500 hover:text-white"
+              onClick={() => setEmailComposerData({ open: true, to: lead.email || "", subject: "", body: "" })}
+            >
+              <Mail className="w-4 h-4 mr-2" /> Email
+            </Button>
 
             {/* Keep hidden dialogs for custom messages if needed, but the main interaction is now one-click */}
             <Dialog open={waOpen} onOpenChange={setWaOpen}>
@@ -1448,13 +1435,12 @@ export default function LeadDetail() {
         </Dialog>
 
       </main>
-      <EmailComposer
+      <EmailComposerModal
         open={emailComposerData.open}
         onOpenChange={(open) => setEmailComposerData(prev => ({ ...prev, open }))}
         leadId={leadId}
-        defaultTo={emailComposerData.to}
-        defaultSubject={emailComposerData.subject}
-        defaultBody={emailComposerData.body}
+        leadEmail={emailComposerData.to || (lead ? lead.email || "" : "")}
+        leadName={lead ? lead.contactName || lead.companyName || "Client" : "Client"}
       />
     </div>
   );

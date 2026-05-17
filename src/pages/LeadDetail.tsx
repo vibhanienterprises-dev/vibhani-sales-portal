@@ -28,7 +28,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { validateGstinFormat, LEAD_STAGES, LEAD_SOURCES, TASK_TYPES, INDIAN_STATES, COMMUNICATION_TEMPLATES } from "@/lib/constants";
 import { Building2, Mail, MessageCircle, Phone, Calendar, CheckSquare, Plus, User, Clock, ArrowRightLeft, FileText, CheckCircle2, UserCheck, Flame, StickyNote, RefreshCw, Filter, UserPlus, Send, Eye, Trash2, Edit2, ChevronDown } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { handleWhatsappClick } from "@/lib/communication";
 import { EmailComposerModal } from "@/components/communication/EmailComposerModal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
@@ -275,6 +275,16 @@ export default function LeadDetail() {
   const [noteText, setNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
   const [activityFilter, setActivityFilter] = useState<string>("all");
+  const [timeline, setTimeline] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (activity) {
+      const uniqueTimeline = Array.from(new Map(activity.map(item => [item.id, item])).values());
+      setTimeline(uniqueTimeline);
+    } else {
+      setTimeline([]);
+    }
+  }, [activity]);
   const [quotationOpen, setQuotationOpen] = useState(false);
   const [editingQuotation, setEditingQuotation] = useState<Quotation | undefined>();
   const [previewQuotation, setPreviewQuotation] = useState<Quotation | undefined>();
@@ -787,7 +797,7 @@ export default function LeadDetail() {
             <TabsTrigger value="contacts">Contacts ({contacts?.length || 0})</TabsTrigger>
             <TabsTrigger value="tasks">Tasks ({tasks?.length || 0})</TabsTrigger>
             <TabsTrigger value="notes">Notes</TabsTrigger>
-            <TabsTrigger value="activity">Activity ({activity?.length || 0})</TabsTrigger>
+            <TabsTrigger value="activity">Activity ({timeline?.length || 0})</TabsTrigger>
             <TabsTrigger value="quotations">Quotes ({leadQuotations.length})</TabsTrigger>
           </TabsList>
           
@@ -1077,7 +1087,7 @@ export default function LeadDetail() {
                     <CardTitle className="text-base flex items-center gap-2">
                       <Clock className="w-4 h-4 text-muted-foreground" />
                       Activity Timeline
-                      {activity && <span className="text-xs font-normal text-muted-foreground ml-1">({activity.length})</span>}
+                      {timeline && <span className="text-xs font-normal text-muted-foreground ml-1">({timeline.length})</span>}
                     </CardTitle>
                     <Button
                       variant="ghost"
@@ -1126,7 +1136,7 @@ export default function LeadDetail() {
                       contacts: ["contact_added"],
                       notes: ["note_added", "check_in"],
                     };
-                    const filtered = (activity ?? []).filter(item =>
+                    const filtered = (timeline ?? []).filter(item =>
                       activityFilter === "all" || (FILTER_TYPES[activityFilter] ?? []).includes(item.type)
                     );
 

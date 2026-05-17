@@ -134,6 +134,61 @@ export default function LeadDetail() {
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [sitePhoto, setSitePhoto] = useState<File | null>(null);
   const [visitingCard, setVisitingCard] = useState<File | null>(null);
+  const [isConvertingToErp, setIsConvertingToErp] = useState(false);
+
+  const handleConvertToErp = async () => {
+    if (!lead) return;
+    setIsConvertingToErp(true);
+    try {
+      const webhookUrl = import.meta.env.VITE_ERP_WEBHOOK_URL || "https://example.com/api/erp/webhook";
+      
+      const payload = {
+        leadName: lead.contactName || "",
+        companyName: lead.companyName || "",
+        email: lead.email || "",
+        phone: lead.phone || "",
+        gstin: lead.gstin || "",
+      };
+
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        throw new Error(`ERP Webhook failed with status ${response.status}`);
+      }
+
+      toast({ 
+        title: "Quotation Drafted in ERP!",
+        description: "Lead details have been sent to ERP successfully."
+      });
+
+      updateLeadStage.mutate({ id: leadId, data: { stage: "converted" } }, {
+        onSuccess: (data) => {
+          queryClient.setQueryData(getGetLeadQueryKey(leadId), data);
+        },
+        onError: () => {
+          toast({ 
+            title: "ERP Synced, but failed to update status in CRM", 
+            variant: "destructive" 
+          });
+        }
+      });
+
+    } catch (error: any) {
+      toast({
+        title: "Failed to convert to ERP Quotation",
+        description: error.message || "An unexpected error occurred during ERP sync.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsConvertingToErp(false);
+    }
+  };
 
   const openImage = (imageUrl: string) => {
     const newTab = window.open();
@@ -523,6 +578,16 @@ export default function LeadDetail() {
               onClick={() => { setEditingQuotation(undefined); setQuotationOpen(true); }}
             >
               <FileText className="w-4 h-4 mr-2" /> New Quotation
+            </Button>
+
+            <Button
+              variant="outline"
+              className="border-amber-500 text-amber-500 hover:bg-amber-500 hover:text-white"
+              onClick={handleConvertToErp}
+              disabled={isConvertingToErp}
+            >
+              {isConvertingToErp ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <ArrowRightLeft className="w-4 h-4 mr-2" />} 
+              Convert to ERP Quotation
             </Button>
 
             <Select value={lead.stage} onValueChange={(val) => handleStageChange(val as UpdateLeadStageBodyStage)}>

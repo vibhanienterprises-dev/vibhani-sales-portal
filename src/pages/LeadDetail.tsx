@@ -149,6 +149,11 @@ export default function LeadDetail() {
         email: lead.email || "",
         phone: lead.phone || "",
         gstin: lead.gstin || "",
+        employeeId: (user as any)?.erpEmployeeId || null,
+        employeeName: [
+          (user as any)?.firstName,
+          (user as any)?.lastName,
+        ].filter(Boolean).join(" ") || (user as any)?.email || null,
       };
 
       const response = await fetch(webhookUrl, {

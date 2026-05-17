@@ -63,6 +63,7 @@ const leadSchema = z.object({
   source: z.string().optional(),
   dealValue: z.coerce.number().optional(),
   notes: z.string().optional(),
+  amcExpiryDate: z.string().optional(),
 });
 
 const contactSchema = z.object({
@@ -326,7 +327,7 @@ export default function LeadDetail() {
 
   const editLeadForm = useForm<z.infer<typeof leadSchema>>({
     resolver: zodResolver(leadSchema),
-    defaultValues: { companyName: "", contactName: "", email: "", phone: "", gstin: "", stateCode: "", industry: "", source: "", dealValue: 0, notes: "" },
+    defaultValues: { companyName: "", contactName: "", email: "", phone: "", gstin: "", stateCode: "", industry: "", source: "", dealValue: 0, notes: "", amcExpiryDate: "" },
   });
 
   const editContactForm = useForm<z.infer<typeof contactSchema>>({
@@ -347,6 +348,7 @@ export default function LeadDetail() {
       source: lead.source ?? "",
       dealValue: lead.dealValue ?? 0,
       notes: lead.notes ?? "",
+      amcExpiryDate: lead.amcExpiryDate ?? "",
     });
     setEditLeadOpen(true);
   };
@@ -813,6 +815,15 @@ export default function LeadDetail() {
                   <div className="flex items-center gap-3">
                     <Building2 className="w-4 h-4 text-muted-foreground" />
                     <span>{lead.contactName || '-'}</span>
+                  </div>
+                  <div className="flex items-center gap-3 pt-1 border-t border-muted">
+                    <Calendar className="w-4 h-4 text-amber-500" />
+                    <span className="flex items-center gap-1.5 text-sm">
+                      <span className="font-semibold text-muted-foreground">AMC Contract Expiry:</span>
+                      <span className={lead.amcExpiryDate ? "text-amber-600 font-medium" : "text-muted-foreground"}>
+                        {lead.amcExpiryDate ? new Date(lead.amcExpiryDate).toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }) : 'Not Set'}
+                      </span>
+                    </span>
                   </div>
                 </CardContent>
               </Card>
@@ -1407,6 +1418,14 @@ export default function LeadDetail() {
                   )} />
                   <FormField control={editLeadForm.control} name="dealValue" render={({ field }) => (
                     <FormItem><FormLabel>Deal Value (₹)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>
+                  )} />
+                  <FormField control={editLeadForm.control} name="amcExpiryDate" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>AMC Expiry Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} value={field.value ?? ""} />
+                      </FormControl>
+                    </FormItem>
                   )} />
                 </div>
                 <FormField control={editLeadForm.control} name="notes" render={({ field }) => (

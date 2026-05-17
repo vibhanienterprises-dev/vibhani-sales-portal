@@ -46,7 +46,7 @@ export default defineConfig({
     allowedHosts: true,
     proxy: {
       "/api": {
-        target: "https://vibhani-crm-backend.onrender.com",
+        target: "http://localhost:4000",
         changeOrigin: true,
         secure: false,
       },

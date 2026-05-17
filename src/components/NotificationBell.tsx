@@ -57,24 +57,30 @@ export function NotificationBell() {
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
 
-  // --- SSE connection for real-time push ---
-  const sseRef = useRef<EventSource | null>(null);
+  // --- Robust polling for real-time notification updates ---
   useEffect(() => {
-    const es = new EventSource("/api/notifications/stream");
-    sseRef.current = es;
-
-    es.onmessage = (e) => {
+    const fetchUpdates = async () => {
       try {
-        const payload = JSON.parse(e.data as string);
-        if (payload.type === "notification") {
+        const apiUrl = import.meta.env.VITE_API_URL || "";
+        const token = typeof localStorage !== "undefined" ? localStorage.getItem("vibhani_token") : null;
+        
+        const response = await fetch(`${apiUrl}/api/notifications`, {
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+          },
+        });
+        if (response.ok) {
           void queryClient.invalidateQueries({ queryKey: ["listNotifications"] });
         }
-      } catch {
-        // ignore parse errors
+      } catch (error) {
+        console.error("Polling error", error);
       }
     };
 
-    return () => es.close();
+    fetchUpdates(); // Initial fetch
+    const intervalId = setInterval(fetchUpdates, 30000); // Poll every 30 seconds
+    return () => clearInterval(intervalId);
   }, [queryClient]);
 
   const handleMarkOne = (id: number) => {

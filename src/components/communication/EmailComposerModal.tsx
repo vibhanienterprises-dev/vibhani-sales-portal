@@ -1,182 +1,222 @@
 import { useState, useEffect } from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+  DialogFooter, DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Select, SelectContent, SelectItem,
+  SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Form, FormControl, FormField,
+  FormItem, FormLabel, FormMessage,
+} from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useQueryClient } from "@tanstack/react-query";
 import { customFetch, getGetLeadActivityQueryKey } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2, Mail, CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
 
+// ── Form schema ──────────────────────────────────────────────────────────────
 const emailSchema = z.object({
-  to: z.string().email("Invalid email address"),
-  subject: z.string().min(1, "Subject is required"),
-  body: z.string().min(1, "Body is required"),
+  to:          z.string().email("A valid recipient email is required"),
+  subject:     z.string().min(1, "Subject is required"),
+  body:        z.string().min(1, "Message body is required"),
   templateKey: z.string().optional(),
 });
+type EmailFormValues = z.infer<typeof emailSchema>;
 
+// ── Template definitions ────────────────────────────────────────────────────
+type TemplateKey = "blank" | "welcome" | "amc_reminder" | "follow_up";
+
+function buildTemplate(key: TemplateKey, leadName: string) {
+  const name = leadName || "there";
+  switch (key) {
+    case "welcome":
+      return {
+        subject: "Welcome to Vibhani Enterprises!",
+        body: `Hi ${name},\n\nWelcome to Vibhani Enterprises! We are thrilled to partner with you and are dedicated to delivering premium engineering services and custom enterprise solutions to support your growth.\n\nDo not hesitate to reach out if there is anything we can do for you.\n\nWarm regards,\nSales Team\nVibhani India`,
+      };
+    case "amc_reminder":
+      return {
+        subject: "AMC Renewal Reminder — Vibhani India Pvt Ltd",
+        body: `Hi ${name},\n\nThis is a gentle reminder that your Annual Maintenance Contract (AMC) with Vibhani India is approaching its renewal date.\n\nTo ensure uninterrupted service continuity, please process the renewal at your earliest convenience. Our team is happy to assist with any queries.\n\nBest regards,\nService & Accounts Team\nVibhani India Pvt Ltd`,
+      };
+    case "follow_up":
+      return {
+        subject: "Following Up on Our Recent Discussion — Vibhani",
+        body: `Hi ${name},\n\nI hope you are doing well! I wanted to quickly follow up on our recent discussion about your engineering requirements and see if you have had a chance to review our proposal.\n\nPlease feel free to reply to this email or call us directly. We look forward to hearing from you.\n\nBest regards,\nSales Team\nVibhani India`,
+      };
+    default: // "blank"
+      return { subject: "", body: "" };
+  }
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
 interface EmailComposerModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  leadId?: number;
-  leadEmail: string;
-  leadName: string;
-  onSent?: () => void;
+  open:           boolean;
+  onOpenChange:   (open: boolean) => void;
+  leadId?:        number;
+  leadEmail:      string;
+  leadName:       string;
+  onSent?:        () => void;
 }
 
 export function EmailComposerModal({
-  open,
-  onOpenChange,
-  leadId,
-  leadEmail,
-  leadName,
-  onSent,
+  open, onOpenChange, leadId, leadEmail, leadName, onSent,
 }: EmailComposerModalProps) {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const { toast }        = useToast();
+  const queryClient      = useQueryClient();
   const [sending, setSending] = useState(false);
-  const [error, setError] = useState("");
+  const [sendStatus, setSendStatus] = useState<"idle" | "success" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState("");
 
-  const form = useForm<z.infer<typeof emailSchema>>({
+  const form = useForm<EmailFormValues>({
     resolver: zodResolver(emailSchema),
-    defaultValues: {
-      to: leadEmail || "",
-      subject: "",
-      body: "",
-      templateKey: "blank",
-    },
+    defaultValues: { to: leadEmail || "", subject: "", body: "", templateKey: "blank" },
   });
 
-  // Sync To email when modal is loaded
+  // Reset form every time modal opens
   useEffect(() => {
     if (open) {
-      setError("");
-      form.reset({
-        to: leadEmail || "",
-        subject: "",
-        body: "",
-        templateKey: "blank",
-      });
+      setSendStatus("idle");
+      setErrorMsg("");
+      form.reset({ to: leadEmail || "", subject: "", body: "", templateKey: "blank" });
     }
   }, [open, leadEmail, form]);
 
-  const handleTemplateChange = (templateKey: string) => {
-    let subject = "";
-    let body = "";
-
-    const name = leadName || "there";
-
-    if (templateKey === "welcome") {
-      subject = "Welcome to Vibhani Enterprises!";
-      body = `Hi ${name},\n\nWelcome to Vibhani Enterprises! We are thrilled to partner with you. Our team is dedicated to providing you with premium engineering services, tools, and custom enterprise solutions.\n\nWarm regards,\nSales Team\nVibhani India`;
-    } else if (templateKey === "amc_reminder") {
-      subject = "AMC Renewal Reminder - Vibhani India Pvt Ltd";
-      body = `Hi ${name},\n\nWe would like to remind you that your Annual Maintenance Contract (AMC) for Vibhani engineering services is due for renewal. Please review and process the renewal at your earliest convenience to ensure uninterrupted services.\n\nBest regards,\nAccounts & Renewal Team\nVibhani India`;
-    } else if (templateKey === "follow_up") {
-      subject = "Following up on our discussion - Vibhani";
-      body = `Hi ${name},\n\nI hope you are doing well. I wanted to quickly follow up on our recent discussion regarding your engineering requirements. Please let us know if you have any questions or require further details.\n\nBest regards,\nSales Team\nVibhani India`;
-    }
-
+  // Apply template when dropdown changes
+  const handleTemplateChange = (key: string) => {
+    const { subject, body } = buildTemplate(key as TemplateKey, leadName);
     form.setValue("subject", subject);
     form.setValue("body", body);
   };
 
-  const onSubmit = async (values: z.infer<typeof emailSchema>) => {
+  // ── Send handler ──────────────────────────────────────────────────────────
+  const onSubmit = async (values: EmailFormValues) => {
     setSending(true);
-    setError("");
-    try {
-      // 1. Trigger placeholder API endpoint
-      const response = await customFetch<{ success: boolean; message: string }>("/api/email/send", {
-        method: "POST",
-        body: JSON.stringify({
-          to: values.to,
-          subject: values.subject,
-          body: values.body,
-          leadId: leadId,
-        }),
-      });
+    setSendStatus("idle");
+    setErrorMsg("");
 
-      if (!response || response.success === false) {
-        throw new Error(response?.message || "Failed to deliver email");
+    try {
+      // POST JSON to the CRM backend SMTP engine
+      const result = await customFetch<{ success: boolean; message?: string; error?: string }>(
+        "/api/email/send",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to:      values.to,
+            subject: values.subject,
+            body:    values.body,
+            leadId:  leadId ?? undefined,
+          }),
+        }
+      );
+
+      if (!result?.success) {
+        throw new Error(result?.error ?? result?.message ?? "Server returned failure");
       }
 
-      toast({ 
-        title: "Email sent successfully",
-        description: `Sent: ${values.subject}`
+      // ── Success path ─────────────────────────────────────────────────────
+      setSendStatus("success");
+      toast({
+        title: "Email Sent!",
+        description: `"${values.subject}" delivered to ${values.to}`,
       });
 
-      // 2. Invalidate parent queries to trigger chronological ledger updates
+      // Invalidate activity timeline so it refreshes immediately
       if (leadId) {
         queryClient.invalidateQueries({ queryKey: getGetLeadActivityQueryKey(leadId) });
       }
 
       if (onSent) onSent();
-      onOpenChange(false);
+
+      // Small delay so the user sees the success state, then close
+      setTimeout(() => onOpenChange(false), 1200);
     } catch (err: any) {
-      console.error("Email send error:", err);
-      setError(err?.message || "Could not send email. Please check your network connection.");
-      toast({ 
-        title: "Error", 
-        description: "Failed to send email composer payload.",
-        variant: "destructive" 
+      // ── Error path ───────────────────────────────────────────────────────
+      const msg = err?.message ?? "Could not deliver email. Check SMTP settings on Render.";
+      setSendStatus("error");
+      setErrorMsg(msg);
+      toast({
+        title: "Email Failed",
+        description: msg,
+        variant: "destructive",
       });
     } finally {
       setSending(false);
     }
   };
 
+  // ── UI ────────────────────────────────────────────────────────────────────
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] w-[95vw] rounded-xl glassmorphism border-white/20">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-            <Mail className="w-5 h-5 text-blue-500" />
-            In-App Email Composer
+      <DialogContent className="sm:max-w-[620px] w-[96vw] rounded-2xl border border-white/10 bg-background shadow-2xl">
+        <DialogHeader className="pb-1">
+          <DialogTitle className="flex items-center gap-2.5 text-lg font-bold">
+            <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-500/15 text-blue-500 shrink-0">
+              <Mail className="w-4 h-4" />
+            </div>
+            Compose Email
           </DialogTitle>
-          <DialogDescription>
-            Send beautifully templated messages directly to <strong>{leadName}</strong>.
+          <DialogDescription className="text-sm text-muted-foreground">
+            Send a message to <strong className="text-foreground">{leadName || leadEmail}</strong> via your configured SMTP server.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-2">
+
+            {/* ── Row 1: To + Template ─────────────────────────────────── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* To: read-only */}
               <FormField
                 control={form.control}
                 name="to"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-semibold uppercase text-muted-foreground">To (Client Email)</FormLabel>
+                    <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">To</FormLabel>
                     <FormControl>
-                      <Input {...field} readOnly className="bg-muted text-muted-foreground cursor-not-allowed font-medium font-mono" />
+                      <Input
+                        {...field}
+                        readOnly
+                        className="bg-muted/60 text-muted-foreground font-mono text-sm cursor-not-allowed border-muted"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
+              {/* Template dropdown */}
               <FormField
                 control={form.control}
                 name="templateKey"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-xs font-semibold uppercase text-muted-foreground">Choose Template</FormLabel>
-                    <Select value={field.value} onValueChange={(v) => { field.onChange(v); handleTemplateChange(v); }}>
+                    <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                      <Sparkles className="w-3 h-3 text-amber-400" /> Template
+                    </FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={(v) => { field.onChange(v); handleTemplateChange(v); }}
+                    >
                       <FormControl>
                         <SelectTrigger className="bg-background border-border">
-                          <SelectValue placeholder="Select email template" />
+                          <SelectValue placeholder="Pick a template…" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="blank">Blank Email</SelectItem>
-                        <SelectItem value="welcome">Welcome to Vibhani</SelectItem>
-                        <SelectItem value="amc_reminder">AMC Renewal Reminder</SelectItem>
-                        <SelectItem value="follow_up">Follow-up Discussion</SelectItem>
+                        <SelectItem value="blank">✏️ Blank — Start fresh</SelectItem>
+                        <SelectItem value="welcome">👋 Welcome to Vibhani</SelectItem>
+                        <SelectItem value="amc_reminder">🔔 AMC Renewal Reminder</SelectItem>
+                        <SelectItem value="follow_up">📞 Follow-up Discussion</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -185,31 +225,18 @@ export function EmailComposerModal({
               />
             </div>
 
+            {/* ── Subject ──────────────────────────────────────────────── */}
             <FormField
               control={form.control}
               name="subject"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-xs font-semibold uppercase text-muted-foreground">Subject Line</FormLabel>
+                  <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Subject Line</FormLabel>
                   <FormControl>
-                    <Input {...field} placeholder="Enter email subject line..." className="bg-background border-border" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="body"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs font-semibold uppercase text-muted-foreground">Message Body</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      {...field} 
-                      className="min-h-[220px] bg-background border-border font-sans text-sm focus-visible:ring-blue-500" 
-                      placeholder="Compose your customized email body message here..." 
+                    <Input
+                      {...field}
+                      placeholder="Enter a clear, descriptive subject…"
+                      className="bg-background border-border focus-visible:ring-blue-500"
                     />
                   </FormControl>
                   <FormMessage />
@@ -217,17 +244,62 @@ export function EmailComposerModal({
               )}
             />
 
-            {error && (
-              <div className="text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-md px-3 py-2">
-                {error}
+            {/* ── Message body ──────────────────────────────────────────── */}
+            <FormField
+              control={form.control}
+              name="body"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Message Body</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      {...field}
+                      rows={9}
+                      placeholder="Type your email message here…"
+                      className="bg-background border-border resize-none font-sans text-sm leading-relaxed focus-visible:ring-blue-500"
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* ── Status banners ───────────────────────────────────────── */}
+            {sendStatus === "success" && (
+              <div className="flex items-center gap-2 rounded-lg bg-green-500/10 border border-green-500/20 text-green-500 px-3 py-2 text-sm font-medium">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                Email delivered successfully!
+              </div>
+            )}
+            {sendStatus === "error" && errorMsg && (
+              <div className="flex items-start gap-2 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive px-3 py-2 text-sm">
+                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>{errorMsg}</span>
               </div>
             )}
 
-            <DialogFooter className="pt-2 gap-2">
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit" disabled={sending} className="min-w-[130px] bg-blue-600 hover:bg-blue-700 text-white font-medium gap-2">
-                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-                Send Email
+            {/* ── Footer ───────────────────────────────────────────────── */}
+            <DialogFooter className="gap-2 pt-1">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+                disabled={sending}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={sending || sendStatus === "success"}
+                className="min-w-[140px] bg-blue-600 hover:bg-blue-700 text-white font-semibold gap-2"
+              >
+                {sending ? (
+                  <><Loader2 className="w-4 h-4 animate-spin" /> Sending…</>
+                ) : sendStatus === "success" ? (
+                  <><CheckCircle2 className="w-4 h-4" /> Sent!</>
+                ) : (
+                  <><Mail className="w-4 h-4" /> Send Email</>
+                )}
               </Button>
             </DialogFooter>
           </form>

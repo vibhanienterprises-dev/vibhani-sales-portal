@@ -107,24 +107,32 @@ export function EmailComposerModal({
       const apiUrl = import.meta.env.VITE_API_URL || "";
       const token = typeof localStorage !== "undefined" ? localStorage.getItem("vibhani_token") : null;
 
-      // POST JSON to the CRM backend SMTP engine using standard fetch
+      // 1. Ensure values are defined before parsing
+      const payload = {
+        to:      values?.to || leadEmail || "",
+        subject: values?.subject || "",
+        body:    values?.body || "",
+        text:    values?.body || "",
+        leadId:  leadId ?? undefined,
+      };
+
+      console.log("Attempting to send email with payload:", payload);
+
+      // 2. Execute Fetch
       const response = await fetch(`${apiUrl}/api/email/send`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Accept":       "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          to:      values.to,
-          subject: values.subject,
-          body:    values.body,
-          leadId:  leadId ?? undefined,
-        }),
+        body: JSON.stringify(payload),
       });
 
+      // 3. Handle Response
       if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson?.error ?? errJson?.message ?? "Failed to send email");
+        const errorData = await response.json().catch(() => null);
+        throw new Error(errorData?.message || errorData?.error || "Server returned an error");
       }
 
       const result = await response.json().catch(() => ({ success: true }));
@@ -137,7 +145,7 @@ export function EmailComposerModal({
       setSendStatus("success");
       toast({
         title: "Email Sent!",
-        description: `"${values.subject}" delivered to ${values.to}`,
+        description: `"${payload.subject}" delivered to ${payload.to}`,
       });
 
       // Invalidate activity timeline so it refreshes immediately
@@ -159,6 +167,7 @@ export function EmailComposerModal({
         description: msg,
         variant: "destructive",
       });
+      console.error("Email send failed:", err);
     } finally {
       setSending(false);
     }

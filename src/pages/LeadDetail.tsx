@@ -1213,8 +1213,6 @@ export default function LeadDetail() {
                                   const isNote = item.type === "note_added";
                                   return (
                                     <div key={item.id} className={`relative flex gap-4 ${isLast ? "" : "pb-5"}`}>
-                                      {/* @ts-ignore */}
-                                      {console.log("Timeline Item:", item)}
                                       <div className={`relative z-10 flex items-center justify-center w-8 h-8 rounded-full border shrink-0 ${cfg.bg} ${cfg.color}`}>
                                         {cfg.icon}
                                       </div>

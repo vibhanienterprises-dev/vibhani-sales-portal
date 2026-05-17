@@ -8,8 +8,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
-import { useQuery } from "@tanstack/react-query";
-import { customFetch } from "@workspace/api-client-react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { customFetch, getGetLeadActivityQueryKey } from "@workspace/api-client-react";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Mail, Paperclip, X } from "lucide-react";
 import { useRef } from "react";
@@ -39,6 +39,7 @@ export function EmailComposer({
   defaultBody = "" 
 }: EmailComposerProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [sending, setSending] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -119,6 +120,9 @@ export function EmailComposer({
       });
 
       toast({ title: "Email sent successfully" });
+      if (leadId) {
+        queryClient.invalidateQueries({ queryKey: getGetLeadActivityQueryKey(leadId) });
+      }
       onOpenChange(false);
     } catch (error) {
       console.error("Email send error:", error);

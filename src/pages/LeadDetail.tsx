@@ -167,9 +167,24 @@ export default function LeadDetail() {
         description: "Lead details have been sent to ERP successfully."
       });
 
+      // 1. Post to timeline
+      try {
+        await customFetch(`/api/leads/${leadId}/notes`, {
+          method: "POST",
+          body: JSON.stringify({
+            text: `Converted Lead to ERP Quotation`,
+            type: "converted_to_erp",
+          }),
+        });
+      } catch (err) {
+        console.error("Failed to log ERP conversion activity:", err);
+      }
+
+      // 2. Update stage and invalidate activity timeline query
       updateLeadStage.mutate({ id: leadId, data: { stage: "converted" } }, {
         onSuccess: (data) => {
           queryClient.setQueryData(getGetLeadQueryKey(leadId), data);
+          queryClient.invalidateQueries({ queryKey: getGetLeadActivityQueryKey(leadId) });
         },
         onError: () => {
           toast({ 
@@ -187,6 +202,29 @@ export default function LeadDetail() {
       });
     } finally {
       setIsConvertingToErp(false);
+    }
+  };
+
+  const handleSendWhatsappTemplate = async (phone: string, templateLabel: string, templateText: string) => {
+    try {
+      // 1. Open WhatsApp Web to send the message
+      handleWhatsappClick(phone, templateText);
+
+      // 2. Call backend /api/whatsapp/send to record activity
+      await customFetch("/api/whatsapp/send", {
+        method: "POST",
+        body: JSON.stringify({
+          phone,
+          leadId,
+          customMessage: `Sent ${templateLabel} WhatsApp Template`,
+        }),
+      });
+
+      // 3. Invalidate timeline queries to refresh immediately
+      queryClient.invalidateQueries({ queryKey: getGetLeadActivityQueryKey(leadId) });
+      toast({ title: "WhatsApp activity logged" });
+    } catch (error) {
+      console.error("Failed to log WhatsApp template activity:", error);
     }
   };
 
@@ -393,6 +431,7 @@ export default function LeadDetail() {
         setWaOpen(false);
         waForm.reset();
         toast({ title: "WhatsApp message sent" });
+        queryClient.invalidateQueries({ queryKey: getGetLeadActivityQueryKey(leadId) });
       }
     });
   };
@@ -619,7 +658,7 @@ export default function LeadDetail() {
                 <DropdownMenuLabel>Send WhatsApp</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 {COMMUNICATION_TEMPLATES.map((tmpl) => (
-                  <DropdownMenuItem key={tmpl.id} onClick={() => handleWhatsappClick(lead.phone || "", tmpl.whatsapp)}>
+                  <DropdownMenuItem key={tmpl.id} onClick={() => handleSendWhatsappTemplate(lead.phone || "", tmpl.label, tmpl.whatsapp)}>
                     {tmpl.label}
                   </DropdownMenuItem>
                 ))}
@@ -872,7 +911,7 @@ export default function LeadDetail() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               {COMMUNICATION_TEMPLATES.map((tmpl) => (
-                                <DropdownMenuItem key={tmpl.id} onClick={() => handleWhatsappClick(contact.whatsapp || contact.phone || "", tmpl.whatsapp)}>
+                                <DropdownMenuItem key={tmpl.id} onClick={() => handleSendWhatsappTemplate(contact.whatsapp || contact.phone || "", tmpl.label, tmpl.whatsapp)}>
                                   {tmpl.label}
                                 </DropdownMenuItem>
                               ))}
@@ -995,16 +1034,17 @@ export default function LeadDetail() {
 
           <TabsContent value="activity" className="mt-6">
             <div className="space-y-4">
-              {/* Add Note */}
+              {/* Log Note / Quick Note */}
               <Card>
                 <CardContent className="pt-4 pb-4">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Quick Note / Log Call</p>
                   <div className="flex gap-2 items-start">
                     <div className="flex items-center justify-center w-8 h-8 rounded-full border shrink-0 bg-amber-500/10 border-amber-500/30 text-amber-500 mt-0.5">
                       <StickyNote className="w-3.5 h-3.5" />
                     </div>
                     <div className="flex-1 flex gap-2">
                       <Textarea
-                        placeholder="Add a note to the timeline… (e.g. 'Called, will follow up Friday')"
+                        placeholder="Type a quick note or log a client call... (e.g., 'Called client, they asked to call back tomorrow.')"
                         value={noteText}
                         onChange={(e) => setNoteText(e.target.value)}
                         rows={2}
@@ -1020,7 +1060,7 @@ export default function LeadDetail() {
                         className="shrink-0 self-end"
                       >
                         <Send className="w-3.5 h-3.5 mr-1.5" />
-                        {savingNote ? "Saving…" : "Add Note"}
+                        {savingNote ? "Saving…" : "Log Note"}
                       </Button>
                     </div>
                   </div>
@@ -1099,6 +1139,7 @@ export default function LeadDetail() {
                       contact_added:  { icon: <UserPlus className="w-3.5 h-3.5" />,       color: "text-pink-400",    bg: "bg-pink-400/10 border-pink-400/30",        label: "Contact" },
                       note_added:     { icon: <StickyNote className="w-3.5 h-3.5" />,     color: "text-amber-500",   bg: "bg-amber-500/10 border-amber-500/30",      label: "Note" },
                       check_in:       { icon: <UserCheck className="w-3.5 h-3.5" />,      color: "text-purple-500",  bg: "bg-purple-500/10 border-purple-500/30",    label: "Check-In" },
+                      converted_to_erp: { icon: <ArrowRightLeft className="w-3.5 h-3.5" />, color: "text-amber-500",  bg: "bg-amber-500/10 border-amber-500/30",      label: "Converted to ERP" },
                     };
 
                     function relativeTime(date: Date): string {
